@@ -12,7 +12,7 @@ enum MenuBarStatusRenderer {
         visibleProductIDs: Set<String>
     ) -> NSImage {
         let height: CGFloat = 22
-        let font = NSFont.systemFont(ofSize: 13.5, weight: .semibold)
+        let font = NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: .medium)
         let smallFont = NSFont.systemFont(ofSize: 12.5, weight: .medium)
         let textColor = NSColor.black
         let iconSize: CGFloat = 16

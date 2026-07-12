@@ -60,16 +60,6 @@ struct SignInView: View {
                 .keyboardShortcut(.defaultAction)
                 .disabled(isCapturing)
 
-                Button("Import CLI login (~/.grok/auth.json)") {
-                    if auth.refreshFromCLIAuth() {
-                        statusMessage = "Imported Grok CLI credentials."
-                        onComplete()
-                        dismiss()
-                    } else {
-                        statusMessage = "No valid ~/.grok/auth.json found. Run `grok login` in Terminal, then try again."
-                    }
-                }
-
                 Spacer()
 
                 Button("Done") {

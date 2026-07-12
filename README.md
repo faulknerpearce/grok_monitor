@@ -49,8 +49,6 @@ Select the **GrokUsage** scheme → **My Mac** → Run (⌘R). The app appears i
 3. If capture does not happen automatically, click **I'm signed in — Capture Session**
 4. Usage appears after the first successful refresh
 
-Optional: if you already ran `grok login`, the app can import a non-expired bearer from `~/.grok/auth.json`.
-
 ## Build from the command line
 
 Point `xcode-select` at Xcode once (if needed):

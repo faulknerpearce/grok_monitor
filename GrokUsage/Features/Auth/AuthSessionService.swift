@@ -25,10 +25,8 @@ final class AuthSessionService: ObservableObject {
     @Published private(set) var lastAuthError: String?
 
     private init() {
-        // One-time: clear any Keychain items from earlier builds that trigger the dialog loop.
         KeychainCleanup.deleteLegacyItems()
         refreshFromDisk()
-        importGrokCLIAuthIfNeeded()
     }
 
     /// Call when the usage API returns 401/403 so the UI can prompt re-auth.
@@ -133,46 +131,6 @@ final class AuthSessionService: ObservableObject {
         needsSignIn = true
         lastAuthError = nil
         logger.info("Signed out")
-    }
-
-    /// Best-effort import of `~/.grok/auth.json` from Grok CLI login.
-    func importGrokCLIAuthIfNeeded() {
-        if isSignedIn { return }
-        let home = FileManager.default.homeDirectoryForCurrentUser
-        let path = home.appendingPathComponent(".grok/auth.json")
-        guard let data = try? Data(contentsOf: path),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-        else { return }
-
-        for (_, value) in json {
-            guard let entry = value as? [String: Any],
-                  let key = entry["key"] as? String,
-                  !key.isEmpty
-            else { continue }
-
-            if let expires = entry["expires_at"] as? String {
-                let expiry = ISO8601DateFormatter.parseFlexible(expires)
-                if let expiry, expiry < Date() {
-                    logger.info("Skipping expired ~/.grok/auth.json token")
-                    continue
-                }
-            }
-
-            save(bearerToken: key)
-            if let email = entry["email"] as? String {
-                save(accountEmail: email)
-            }
-            logger.info("Imported Grok CLI auth token")
-            return
-        }
-    }
-
-    /// Re-read CLI auth (e.g. after user runs `grok login`).
-    @discardableResult
-    func refreshFromCLIAuth() -> Bool {
-        importGrokCLIAuthIfNeeded()
-        refreshFromDisk()
-        return isSignedIn
     }
 
     // MARK: - Helpers
