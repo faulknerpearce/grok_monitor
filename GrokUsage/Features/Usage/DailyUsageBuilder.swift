@@ -52,7 +52,6 @@ enum DailyUsageBuilder {
             let weekDays = buildDaysFromServer(
                 serverDaily: serverDaily,
                 weekStart: weekStart,
-                weekEnd: weekEnd,
                 calendar: cal,
                 now: now
             )
@@ -123,7 +122,7 @@ enum DailyUsageBuilder {
                 let prevDayKey = sortedDays.last { $0 < dayStart }
                 let previousProducts = prevDayKey.flatMap { productsByDay[$0] } ?? []
                 if let previous = prevCumulative {
-                    if dayCumulative + 0.5 < previous {
+                    if dayCumulative + 5 < previous {
                         isAfterReset = true
                         if previous > 0.05 {
                             segments.append(
@@ -335,7 +334,6 @@ enum DailyUsageBuilder {
     private static func buildDaysFromServer(
         serverDaily: [DailyUsageSnapshot],
         weekStart: Date,
-        weekEnd: Date,
         calendar: Calendar,
         now: Date
     ) -> [DailyUsageDay] {
@@ -368,7 +366,6 @@ enum DailyUsageBuilder {
                 )
             )
         }
-        _ = weekEnd
         return days
     }
 
@@ -461,10 +458,8 @@ enum DailyUsageBuilder {
         }
 
         var deltas: [ProductUsage] = []
-        var seen = Set<String>()
         for product in current {
             let key = product.id.lowercased()
-            seen.insert(key)
             let delta = max(0, product.percentOfPool - (previousByID[key] ?? 0))
             guard delta > 0.05 else { continue }
             deltas.append(
@@ -476,9 +471,6 @@ enum DailyUsageBuilder {
                 )
             )
         }
-        // Products that disappeared from the current snapshot contribute nothing.
-        _ = seen
-
         return ProductCatalog.sortForDisplay(deltas).map { product in
             DailyUsageSegment(
                 productID: product.id,

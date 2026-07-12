@@ -27,13 +27,9 @@ struct UsageClient: Sendable {
     var bearerToken: String?
     var accountEmail: String?
     var session: URLSession = .shared
-    var useFixtureWhenUnsigned: Bool = false
 
     func fetchUsage() async throws -> WeeklyUsageSnapshot {
         if cookieHeader == nil && bearerToken == nil {
-            if useFixtureWhenUnsigned {
-                return try Self.loadFixture()
-            }
             throw UsageClientError.notSignedIn
         }
 
@@ -199,11 +195,17 @@ struct UsageClient: Sendable {
     }
 
     static func loadFixture() throws -> WeeklyUsageSnapshot {
-        if let url = Bundle.main.url(forResource: "usage_fixture", withExtension: "json"),
-           let data = try? Data(contentsOf: url),
-           let snapshot = UsageResponseParser.parseJSON(data, accountEmail: nil)
-        {
-            return snapshot
+        let bundles: [Bundle] = [.main]
+        #if SWIFT_PACKAGE
+        bundles.append(contentsOf: Bundle.allBundles.filter { $0.bundlePath.hasSuffix("GrokUsage_GrokUsage.bundle") })
+        #endif
+        for bundle in bundles {
+            if let url = bundle.url(forResource: "usage_fixture", withExtension: "json"),
+               let data = try? Data(contentsOf: url),
+               let snapshot = UsageResponseParser.parseJSON(data, accountEmail: nil)
+            {
+                return snapshot
+            }
         }
         return .preview
     }
@@ -405,10 +407,10 @@ enum GRPCWebParser {
 
     /// Product-type enums observed in GetGrokCreditsConfig field 7.
     private static let productEnumMap: [UInt64: (id: String, name: String)] = [
-        2: ("build", "Grok Build"),
-        4: ("chat", "Chat"),
         1: ("api", "API"),
+        2: ("build", "Grok Build"),
         3: ("imagine", "Imagine"),
+        4: ("chat", "Chat"),
         5: ("voice", "Voice"),
         6: ("api", "API")
     ]
@@ -666,8 +668,7 @@ enum GRPCWebParser {
         while index < bytes.count {
             let fieldStart = index
             guard let key = readVarint(bytes, index: &index), key != 0 else {
-                index = fieldStart + 1
-                continue
+                return (fixed32, varints, nextOrder)
             }
             let fieldNumber = key >> 3
             let wireType = key & 0x07
@@ -678,7 +679,7 @@ enum GRPCWebParser {
                 if let value = readVarint(bytes, index: &index) {
                     varints.append((fieldPath, value))
                 } else {
-                    index = fieldStart + 1
+                    return (fixed32, varints, nextOrder)
                 }
             case 1:
                 guard index + 8 <= bytes.count else { return (fixed32, varints, nextOrder) }
@@ -687,8 +688,7 @@ enum GRPCWebParser {
                 guard let length = readVarint(bytes, index: &index),
                       length <= UInt64(bytes.count - index)
                 else {
-                    index = fieldStart + 1
-                    continue
+                    return (fixed32, varints, nextOrder)
                 }
                 let start = index
                 let end = index + Int(length)
@@ -709,7 +709,7 @@ enum GRPCWebParser {
                 nextOrder += 1
                 index += 4
             default:
-                index = fieldStart + 1
+                return (fixed32, varints, nextOrder)
             }
         }
         return (fixed32, varints, nextOrder)
