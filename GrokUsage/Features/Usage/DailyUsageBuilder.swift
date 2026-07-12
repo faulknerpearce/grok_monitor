@@ -8,10 +8,15 @@ import Foundation
 /// 3. On the first tracked day (no earlier sample), attribute that day’s
 ///    cumulative weekly used % to that day — never invent usage for days
 ///    before tracking started
-///
-/// Each day’s track in the UI is scaled to `100/7` of the weekly pool.
 enum DailyUsageBuilder {
-    /// Amber used for “Before reset” segments (matches grok.com Usage UI).
+
+    private static let weekdayFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = .current
+        f.dateFormat = "EEE"
+        return f
+    }()
+    /// Amber used for "Before reset" segments (matches grok.com Usage UI).
     static let beforeResetColor = ProductColor.voice
 
     /// Equal daily share of the weekly SuperGrok pool.
@@ -94,10 +99,8 @@ enum DailyUsageBuilder {
             productsByDay[day] = snap.products
         }
 
-        let weekdayFormatter = DateFormatter()
+        let weekdayFormatter = Self.weekdayFormatter
         weekdayFormatter.calendar = cal
-        weekdayFormatter.locale = .current
-        weekdayFormatter.dateFormat = "EEE"
 
         var days: [DailyUsageDay] = []
         var usedFirstDayAttribution = false
@@ -205,8 +208,7 @@ enum DailyUsageBuilder {
             (0, 0, 0)    // Sun
         ]
 
-        let weekdayFormatter = DateFormatter()
-        weekdayFormatter.dateFormat = "EEE"
+        let weekdayFormatter = Self.weekdayFormatter
 
         var days: [DailyUsageDay] = []
         for offset in 0..<7 {
@@ -337,10 +339,8 @@ enum DailyUsageBuilder {
         calendar: Calendar,
         now: Date
     ) -> [DailyUsageDay] {
-        let weekdayFormatter = DateFormatter()
+        let weekdayFormatter = Self.weekdayFormatter
         weekdayFormatter.calendar = calendar
-        weekdayFormatter.locale = .current
-        weekdayFormatter.dateFormat = "EEE"
 
         let byDay = Dictionary(
             serverDaily.map { (calendar.startOfDay(for: $0.dayStart), $0) },

@@ -10,7 +10,6 @@ final class AppSettings: ObservableObject {
         didSet {
             guard showCategoriesInMenuBar != oldValue else { return }
             defaults.set(showCategoriesInMenuBar, forKey: Keys.showCategories)
-            objectWillChange.send()
         }
     }
 
@@ -18,16 +17,23 @@ final class AppSettings: ObservableObject {
         didSet {
             guard showBarGraphInMenuBar != oldValue else { return }
             defaults.set(showBarGraphInMenuBar, forKey: Keys.showBar)
-            objectWillChange.send()
         }
     }
 
     @Published var activePollSeconds: Int {
-        didSet { defaults.set(activePollSeconds, forKey: Keys.activePoll) }
+        didSet {
+            let clamped = max(15, min(300, activePollSeconds))
+            if activePollSeconds != clamped { activePollSeconds = clamped }
+            defaults.set(activePollSeconds, forKey: Keys.activePoll)
+        }
     }
 
     @Published var idlePollSeconds: Int {
-        didSet { defaults.set(idlePollSeconds, forKey: Keys.idlePoll) }
+        didSet {
+            let clamped = max(15, min(3600, idlePollSeconds))
+            if idlePollSeconds != clamped { idlePollSeconds = clamped }
+            defaults.set(idlePollSeconds, forKey: Keys.idlePoll)
+        }
     }
 
     @Published var thresholdEnabled: Bool {

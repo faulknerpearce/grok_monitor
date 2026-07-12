@@ -381,11 +381,14 @@ extension ISO8601DateFormatter {
         return f
     }()
 
+    static let plain: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f
+    }()
+
     static func parseFlexible(_ string: String) -> Date? {
-        if let d = flexible.date(from: string) { return d }
-        let plain = ISO8601DateFormatter()
-        plain.formatOptions = [.withInternetDateTime]
-        return plain.date(from: string)
+        return flexible.date(from: string) ?? plain.date(from: string)
     }
 }
 

@@ -4,7 +4,59 @@ import SwiftUI
 /// Renders the menu bar status as a single bitmap.
 /// MenuBarExtra drops GeometryReader / Circle SwiftUI, so we draw explicitly.
 enum MenuBarStatusRenderer {
+    private static var _cache: [String: NSImage] = [:]
+    private static let cacheLock = NSLock()
+
     static func image(
+        snapshot: WeeklyUsageSnapshot?,
+        isSignedIn: Bool,
+        showBar: Bool,
+        showCategories: Bool,
+        visibleProductIDs: Set<String>
+    ) -> NSImage {
+        let cacheKey = _cacheKey(
+            snapshot: snapshot,
+            isSignedIn: isSignedIn,
+            showBar: showBar,
+            showCategories: showCategories,
+            visibleProductIDs: visibleProductIDs
+        )
+        cacheLock.lock()
+        if let cached = _cache[cacheKey] {
+            cacheLock.unlock()
+            return cached
+        }
+        cacheLock.unlock()
+
+        let image = _render(
+            snapshot: snapshot,
+            isSignedIn: isSignedIn,
+            showBar: showBar,
+            showCategories: showCategories,
+            visibleProductIDs: visibleProductIDs
+        )
+
+        cacheLock.lock()
+        if _cache.count > 20 { _cache.removeAll(keepingCapacity: true) }
+        _cache[cacheKey] = image
+        cacheLock.unlock()
+
+        return image
+    }
+
+    private static func _cacheKey(
+        snapshot: WeeklyUsageSnapshot?,
+        isSignedIn: Bool,
+        showBar: Bool,
+        showCategories: Bool,
+        visibleProductIDs: Set<String>
+    ) -> String {
+        guard let snap = snapshot else { return "unsigned" }
+        let products = menuBarProducts(from: snap, visibleProductIDs: visibleProductIDs)
+        return "\(Int(snap.usedPercent))-\(isSignedIn)-\(showBar)-\(showCategories)-\(products.map { "\($0.id):\(Int($0.percentOfPool))" }.joined(separator: ","))-\(visibleProductIDs.sorted().joined(separator: ","))"
+    }
+
+    private static func _render(
         snapshot: WeeklyUsageSnapshot?,
         isSignedIn: Bool,
         showBar: Bool,

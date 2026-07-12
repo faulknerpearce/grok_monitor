@@ -95,7 +95,7 @@ struct MenuBarPanelView: View {
                 HStack {
                     Text("Extra Usage Credits")
                     Spacer()
-                    Text(credits as NSDecimalNumber, formatter: currencyFormatter)
+                    Text(credits as NSDecimalNumber, formatter: Self.currencyFormatter)
                         .foregroundStyle(.secondary)
                 }
                 .font(.system(size: 12))
@@ -212,10 +212,10 @@ struct MenuBarPanelView: View {
         .padding(.vertical, 5)
     }
 
-    private var currencyFormatter: NumberFormatter {
+    private static let currencyFormatter: NumberFormatter = {
         let f = NumberFormatter()
         f.numberStyle = .currency
         f.currencyCode = "USD"
         return f
-    }
+    }()
 }
