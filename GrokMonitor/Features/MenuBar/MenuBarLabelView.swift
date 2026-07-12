@@ -13,6 +13,7 @@ struct MenuBarLabelView: View {
     private var labelID: String {
         let products = visibleProductIDs.sorted().joined(separator: ",")
         let used = snapshot.map { Int($0.usedPercent.rounded()) } ?? -1
+        // Include colorScheme so SwiftUI refreshes when menu-bar chrome flips.
         return "\(showBar)-\(showCategories)-\(products)-\(used)-\(isSignedIn)-\(colorScheme)"
     }
 
