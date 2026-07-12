@@ -1,22 +1,23 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 5.10
 import PackageDescription
 
 let package = Package(
-    name: "GrokUsage",
+    name: "GrokMonitor",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "GrokUsage", targets: ["GrokUsage"])
+        .executable(name: "GrokMonitor", targets: ["GrokMonitor"])
     ],
     targets: [
         .executableTarget(
-            name: "GrokUsage",
-            path: "GrokUsage",
+            name: "GrokMonitor",
+            path: "GrokMonitor",
             exclude: [
                 "Resources/Info.plist",
-                "Resources/GrokUsage.entitlements"
+                "Resources/GrokMonitor.entitlements"
             ],
             resources: [
                 .process("Resources/Assets.xcassets"),
+                .copy("Resources/PrivacyInfo.xcprivacy"),
                 .copy("Fixtures/usage_fixture.json")
             ]
         )

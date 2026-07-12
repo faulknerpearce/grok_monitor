@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Generate a reliable GrokUsage.xcodeproj with explicit file paths."""
+"""Generate a reliable GrokMonitor.xcodeproj with explicit file paths."""
 from __future__ import annotations
 import hashlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / "GrokUsage"
-TESTS = ROOT / "GrokUsageTests"
-PROJ = ROOT / "GrokUsage.xcodeproj"
+SRC = ROOT / "GrokMonitor"
+TESTS = ROOT / "GrokMonitorTests"
+PROJ = ROOT / "GrokMonitor.xcodeproj"
 PROJ.mkdir(exist_ok=True)
 
 SWIFT_VERSION = "5.10"
@@ -19,11 +19,11 @@ def uid(seed: str) -> str:
 
 swift_files = sorted(p.relative_to(ROOT) for p in SRC.rglob("*.swift"))
 test_files = sorted(p.relative_to(ROOT) for p in TESTS.rglob("*.swift"))
-asset = Path("GrokUsage/Resources/Assets.xcassets")
-fixture = Path("GrokUsage/Fixtures/usage_fixture.json")
-info = Path("GrokUsage/Resources/Info.plist")
-ent = Path("GrokUsage/Resources/GrokUsage.entitlements")
-privacy = Path("GrokUsage/Resources/PrivacyInfo.xcprivacy")
+asset = Path("GrokMonitor/Resources/Assets.xcassets")
+fixture = Path("GrokMonitor/Fixtures/usage_fixture.json")
+info = Path("GrokMonitor/Resources/Info.plist")
+ent = Path("GrokMonitor/Resources/GrokMonitor.entitlements")
+privacy = Path("GrokMonitor/Resources/PrivacyInfo.xcprivacy")
 
 ids = {k: uid(f"id:{k}") for k in [
     "project", "main", "products", "src_group", "tests_group", "res_group",
@@ -60,7 +60,7 @@ for bid, ref, name in res_builds:
     a(f"\t\t{bid} /* {name} in Resources */ = {{isa = PBXBuildFile; fileRef = {ref} /* {name} */; }};")
 for bid, ref, name in test_builds:
     a(f"\t\t{bid} /* {name} in Sources */ = {{isa = PBXBuildFile; fileRef = {ref} /* {name} */; }};")
-a(f"\t\t{ids['app_in_tests']} /* Grok Usage.app in Frameworks */ = {{isa = PBXBuildFile; fileRef = {ids['app_product']} /* Grok Usage.app */; }};")
+a(f"\t\t{ids['app_in_tests']} /* Grok Monitor.app in Frameworks */ = {{isa = PBXBuildFile; fileRef = {ids['app_product']} /* Grok Monitor.app */; }};")
 a("/* End PBXBuildFile section */")
 
 a("/* Begin PBXContainerItemProxy section */")
@@ -69,13 +69,13 @@ a("\t\t\tisa = PBXContainerItemProxy;")
 a(f"\t\t\tcontainerPortal = {ids['project']} /* Project object */;")
 a("\t\t\tproxyType = 1;")
 a(f"\t\t\tremoteGlobalIDString = {ids['app_target']};")
-a("\t\t\tremoteInfo = GrokUsage;")
+a("\t\t\tremoteInfo = GrokMonitor;")
 a("\t\t};")
 a("/* End PBXContainerItemProxy section */")
 
 a("/* Begin PBXFileReference section */")
-a(f'\t\t{ids["app_product"]} /* Grok Usage.app */ = {{isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Grok Usage.app"; sourceTree = BUILT_PRODUCTS_DIR; }};')
-a(f'\t\t{ids["test_product"]} /* GrokUsageTests.xctest */ = {{isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GrokUsageTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; }};')
+a(f'\t\t{ids["app_product"]} /* Grok Monitor.app */ = {{isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Grok Monitor.app"; sourceTree = BUILT_PRODUCTS_DIR; }};')
+a(f'\t\t{ids["test_product"]} /* GrokMonitorTests.xctest */ = {{isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GrokMonitorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; }};')
 for p in swift_files:
     a(f'\t\t{file_refs[str(p)]} /* {p.name} */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = {p.as_posix()}; sourceTree = SOURCE_ROOT; }};')
 for p in test_files:
@@ -83,7 +83,7 @@ for p in test_files:
 a(f'\t\t{file_refs[str(asset)]} /* Assets.xcassets */ = {{isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = {asset.as_posix()}; sourceTree = SOURCE_ROOT; }};')
 a(f'\t\t{file_refs[str(fixture)]} /* usage_fixture.json */ = {{isa = PBXFileReference; lastKnownFileType = text.json; path = {fixture.as_posix()}; sourceTree = SOURCE_ROOT; }};')
 a(f'\t\t{file_refs[str(info)]} /* Info.plist */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = {info.as_posix()}; sourceTree = SOURCE_ROOT; }};')
-a(f'\t\t{file_refs[str(ent)]} /* GrokUsage.entitlements */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = {ent.as_posix()}; sourceTree = SOURCE_ROOT; }};')
+a(f'\t\t{file_refs[str(ent)]} /* GrokMonitor.entitlements */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = {ent.as_posix()}; sourceTree = SOURCE_ROOT; }};')
 a(f'\t\t{file_refs[str(privacy)]} /* PrivacyInfo.xcprivacy */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = {privacy.as_posix()}; sourceTree = SOURCE_ROOT; }};')
 a("/* End PBXFileReference section */")
 
@@ -93,7 +93,7 @@ a("\t\t\tisa = PBXGroup;")
 a("\t\t\tchildren = (")
 a(f"\t\t\t\t{ids['src_group']} /* Sources */,")
 a(f"\t\t\t\t{ids['res_group']} /* Resources */,")
-a(f"\t\t\t\t{ids['tests_group']} /* GrokUsageTests */,")
+a(f"\t\t\t\t{ids['tests_group']} /* GrokMonitorTests */,")
 a(f"\t\t\t\t{ids['products']} /* Products */,")
 a("\t\t\t);")
 a('\t\t\tsourceTree = "<group>";')
@@ -101,8 +101,8 @@ a("\t\t};")
 a(f"\t\t{ids['products']} /* Products */ = {{")
 a("\t\t\tisa = PBXGroup;")
 a("\t\t\tchildren = (")
-a(f"\t\t\t\t{ids['app_product']} /* Grok Usage.app */,")
-a(f"\t\t\t\t{ids['test_product']} /* GrokUsageTests.xctest */,")
+a(f"\t\t\t\t{ids['app_product']} /* Grok Monitor.app */,")
+a(f"\t\t\t\t{ids['test_product']} /* GrokMonitorTests.xctest */,")
 a("\t\t\t);")
 a("\t\t\tname = Products;")
 a('\t\t\tsourceTree = "<group>";')
@@ -122,27 +122,27 @@ a("\t\t\tchildren = (")
 a(f"\t\t\t\t{file_refs[str(asset)]} /* Assets.xcassets */,")
 a(f"\t\t\t\t{file_refs[str(fixture)]} /* usage_fixture.json */,")
 a(f"\t\t\t\t{file_refs[str(info)]} /* Info.plist */,")
-a(f"\t\t\t\t{file_refs[str(ent)]} /* GrokUsage.entitlements */,")
+a(f"\t\t\t\t{file_refs[str(ent)]} /* GrokMonitor.entitlements */,")
 a(f"\t\t\t\t{file_refs[str(privacy)]} /* PrivacyInfo.xcprivacy */,")
 a("\t\t\t);")
 a("\t\t\tname = Resources;")
 a('\t\t\tsourceTree = "<group>";')
 a("\t\t};")
-a(f"\t\t{ids['tests_group']} /* GrokUsageTests */ = {{")
+a(f"\t\t{ids['tests_group']} /* GrokMonitorTests */ = {{")
 a("\t\t\tisa = PBXGroup;")
 a("\t\t\tchildren = (")
 for p in test_files:
     a(f"\t\t\t\t{file_refs[str(p)]} /* {p.name} */,")
 a("\t\t\t);")
-a("\t\t\tname = GrokUsageTests;")
+a("\t\t\tname = GrokMonitorTests;")
 a('\t\t\tsourceTree = "<group>";')
 a("\t\t};")
 a("/* End PBXGroup section */")
 
 a("/* Begin PBXNativeTarget section */")
-a(f"\t\t{ids['app_target']} /* GrokUsage */ = {{")
+a(f"\t\t{ids['app_target']} /* GrokMonitor */ = {{")
 a("\t\t\tisa = PBXNativeTarget;")
-a(f"\t\t\tbuildConfigurationList = {ids['app_cfgs']} /* Build configuration list for PBXNativeTarget \"GrokUsage\" */;")
+a(f"\t\t\tbuildConfigurationList = {ids['app_cfgs']} /* Build configuration list for PBXNativeTarget \"GrokMonitor\" */;")
 a("\t\t\tbuildPhases = (")
 a(f"\t\t\t\t{ids['sources']} /* Sources */,")
 a(f"\t\t\t\t{ids['frameworks']} /* Frameworks */,")
@@ -150,14 +150,14 @@ a(f"\t\t\t\t{ids['resources']} /* Resources */,")
 a("\t\t\t);")
 a("\t\t\tbuildRules = ();")
 a("\t\t\tdependencies = ();")
-a("\t\t\tname = GrokUsage;")
-a("\t\t\tproductName = GrokUsage;")
-a(f"\t\t\tproductReference = {ids['app_product']} /* Grok Usage.app */;")
+a("\t\t\tname = GrokMonitor;")
+a("\t\t\tproductName = GrokMonitor;")
+a(f"\t\t\tproductReference = {ids['app_product']} /* Grok Monitor.app */;")
 a('\t\t\tproductType = "com.apple.product-type.application";')
 a("\t\t};")
-a(f"\t\t{ids['test_target']} /* GrokUsageTests */ = {{")
+a(f"\t\t{ids['test_target']} /* GrokMonitorTests */ = {{")
 a("\t\t\tisa = PBXNativeTarget;")
-a(f"\t\t\tbuildConfigurationList = {ids['test_cfgs']} /* Build configuration list for PBXNativeTarget \"GrokUsageTests\" */;")
+a(f"\t\t\tbuildConfigurationList = {ids['test_cfgs']} /* Build configuration list for PBXNativeTarget \"GrokMonitorTests\" */;")
 a("\t\t\tbuildPhases = (")
 a(f"\t\t\t\t{ids['test_sources']} /* Sources */,")
 a(f"\t\t\t\t{ids['test_frameworks']} /* Frameworks */,")
@@ -166,9 +166,9 @@ a("\t\t\tbuildRules = ();")
 a("\t\t\tdependencies = (")
 a(f"\t\t\t\t{ids['dep']} /* PBXTargetDependency */,")
 a("\t\t\t);")
-a("\t\t\tname = GrokUsageTests;")
-a("\t\t\tproductName = GrokUsageTests;")
-a(f"\t\t\tproductReference = {ids['test_product']} /* GrokUsageTests.xctest */;")
+a("\t\t\tname = GrokMonitorTests;")
+a("\t\t\tproductName = GrokMonitorTests;")
+a(f"\t\t\tproductReference = {ids['test_product']} /* GrokMonitorTests.xctest */;")
 a('\t\t\tproductType = "com.apple.product-type.bundle.unit-test";')
 a("\t\t};")
 a("/* End PBXNativeTarget section */")
@@ -181,7 +181,7 @@ a("\t\t\t\tBuildIndependentTargetsInParallel = 1;")
 a("\t\t\t\tLastSwiftUpdateCheck = 1600;")
 a("\t\t\t\tLastUpgradeCheck = 1600;")
 a("\t\t\t};")
-a(f"\t\t\tbuildConfigurationList = {ids['proj_cfgs']} /* Build configuration list for PBXProject \"GrokUsage\" */;")
+a(f"\t\t\tbuildConfigurationList = {ids['proj_cfgs']} /* Build configuration list for PBXProject \"GrokMonitor\" */;")
 a('\t\t\tcompatibilityVersion = "Xcode 15.0";')
 a("\t\t\tdevelopmentRegion = en;")
 a("\t\t\thasScannedForEncodings = 0;")
@@ -191,8 +191,8 @@ a(f"\t\t\tproductRefGroup = {ids['products']} /* Products */;")
 a('\t\t\tprojectDirPath = "";')
 a('\t\t\tprojectRoot = "";')
 a("\t\t\ttargets = (")
-a(f"\t\t\t\t{ids['app_target']} /* GrokUsage */,")
-a(f"\t\t\t\t{ids['test_target']} /* GrokUsageTests */,")
+a(f"\t\t\t\t{ids['app_target']} /* GrokMonitor */,")
+a(f"\t\t\t\t{ids['test_target']} /* GrokMonitorTests */,")
 a("\t\t\t);")
 a("\t\t};")
 a("/* End PBXProject section */")
@@ -241,7 +241,7 @@ a(f"\t\t{ids['test_frameworks']} /* Frameworks */ = {{")
 a("\t\t\tisa = PBXFrameworksBuildPhase;")
 a("\t\t\tbuildActionMask = 2147483647;")
 a("\t\t\tfiles = (")
-a(f"\t\t\t\t{ids['app_in_tests']} /* Grok Usage.app in Frameworks */,")
+a(f"\t\t\t\t{ids['app_in_tests']} /* Grok Monitor.app in Frameworks */,")
 a("\t\t\t);")
 a("\t\t\trunOnlyForDeploymentPostprocessing = 0;")
 a("\t\t};")
@@ -250,7 +250,7 @@ a("/* End PBXFrameworksBuildPhase section */")
 a("/* Begin PBXTargetDependency section */")
 a(f"\t\t{ids['dep']} /* PBXTargetDependency */ = {{")
 a("\t\t\tisa = PBXTargetDependency;")
-a(f"\t\t\ttarget = {ids['app_target']} /* GrokUsage */;")
+a(f"\t\t\ttarget = {ids['app_target']} /* GrokMonitor */;")
 a(f"\t\t\ttargetProxy = {ids['proxy']} /* PBXContainerItemProxy */;")
 a("\t\t};")
 a("/* End PBXTargetDependency section */")
@@ -273,7 +273,7 @@ def cfg(cid: str, name: str, kind: str) -> None:
             a('\t\t\t\tSWIFT_OPTIMIZATION_LEVEL = "-Onone";')
     elif kind == "app":
         a("\t\t\t\tASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;")
-        a("\t\t\t\tCODE_SIGN_ENTITLEMENTS = GrokUsage/Resources/GrokUsage.entitlements;")
+        a("\t\t\t\tCODE_SIGN_ENTITLEMENTS = GrokMonitor/Resources/GrokMonitor.entitlements;")
         a("\t\t\t\tCODE_SIGN_STYLE = Automatic;")
         a("\t\t\t\tCOMBINE_HIDPI_IMAGES = YES;")
         a("\t\t\t\tCURRENT_PROJECT_VERSION = 1;")
@@ -281,24 +281,24 @@ def cfg(cid: str, name: str, kind: str) -> None:
         if name == "Debug":
             a("\t\t\t\tENABLE_TESTABILITY = YES;")
         a("\t\t\t\tGENERATE_INFOPLIST_FILE = NO;")
-        a("\t\t\t\tINFOPLIST_FILE = GrokUsage/Resources/Info.plist;")
+        a("\t\t\t\tINFOPLIST_FILE = GrokMonitor/Resources/Info.plist;")
         a('\t\t\t\tLD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks");')
         a("\t\t\t\tMACOSX_DEPLOYMENT_TARGET = 14.0;")
         a("\t\t\t\tMARKETING_VERSION = 1.0.0;")
-        a("\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.grokusage.app;")
-        a("\t\t\t\tPRODUCT_MODULE_NAME = GrokUsage;")
-        a('\t\t\t\tPRODUCT_NAME = "Grok Usage";')
-        a("\t\t\t\tPRIVACY_MANIFEST_FILE = GrokUsage/Resources/PrivacyInfo.xcprivacy;")
+        a("\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.grokmonitor.app;")
+        a("\t\t\t\tPRODUCT_MODULE_NAME = GrokMonitor;")
+        a('\t\t\t\tPRODUCT_NAME = "Grok Monitor";')
+        a("\t\t\t\tPRIVACY_MANIFEST_FILE = GrokMonitor/Resources/PrivacyInfo.xcprivacy;")
         a(f"\t\t\t\tSWIFT_VERSION = {SWIFT_VERSION};")
     else:
         a('\t\t\t\tBUNDLE_LOADER = "$(TEST_HOST)";')
         a("\t\t\t\tCODE_SIGN_STYLE = Automatic;")
         a("\t\t\t\tGENERATE_INFOPLIST_FILE = YES;")
         a("\t\t\t\tMACOSX_DEPLOYMENT_TARGET = 14.0;")
-        a("\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.grokusage.tests;")
+        a("\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.grokmonitor.tests;")
         a('\t\t\t\tPRODUCT_NAME = "$(TARGET_NAME)";')
         a(f"\t\t\t\tSWIFT_VERSION = {SWIFT_VERSION};")
-        a('\t\t\t\tTEST_HOST = "$(BUILT_PRODUCTS_DIR)/Grok Usage.app/Contents/MacOS/Grok Usage";')
+        a('\t\t\t\tTEST_HOST = "$(BUILT_PRODUCTS_DIR)/Grok Monitor.app/Contents/MacOS/Grok Monitor";')
         a("\t\t\t\tENABLE_TESTING_SEARCH_PATHS = YES;")
     a("\t\t\t};")
     a(f"\t\t\tname = {name};")
@@ -315,9 +315,9 @@ a("/* End XCBuildConfiguration section */")
 
 a("/* Begin XCConfigurationList section */")
 for cid, d, r, label in [
-    (ids["proj_cfgs"], ids["dbg_proj"], ids["rel_proj"], 'PBXProject "GrokUsage"'),
-    (ids["app_cfgs"], ids["dbg_app"], ids["rel_app"], 'PBXNativeTarget "GrokUsage"'),
-    (ids["test_cfgs"], ids["dbg_test"], ids["rel_test"], 'PBXNativeTarget "GrokUsageTests"'),
+    (ids["proj_cfgs"], ids["dbg_proj"], ids["rel_proj"], 'PBXProject "GrokMonitor"'),
+    (ids["app_cfgs"], ids["dbg_app"], ids["rel_app"], 'PBXNativeTarget "GrokMonitor"'),
+    (ids["test_cfgs"], ids["dbg_test"], ids["rel_test"], 'PBXNativeTarget "GrokMonitorTests"'),
 ]:
     a(f"\t\t{cid} /* Build configuration list for {label} */ = {{")
     a("\t\t\tisa = XCConfigurationList;")
@@ -337,30 +337,30 @@ a("}")
 
 scheme_dir = PROJ / "xcshareddata" / "xcschemes"
 scheme_dir.mkdir(parents=True, exist_ok=True)
-(scheme_dir / "GrokUsage.xcscheme").write_text(f"""<?xml version="1.0" encoding="UTF-8"?>
+(scheme_dir / "GrokMonitor.xcscheme").write_text(f"""<?xml version="1.0" encoding="UTF-8"?>
 <Scheme LastUpgradeVersion = "1600" version = "1.7">
    <BuildAction parallelizeBuildables = "YES" buildImplicitDependencies = "YES">
       <BuildActionEntries>
          <BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">
-            <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "{ids['app_target']}" BuildableName = "Grok Usage.app" BlueprintName = "GrokUsage" ReferencedContainer = "container:GrokUsage.xcodeproj"/>
+            <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "{ids['app_target']}" BuildableName = "Grok Monitor.app" BlueprintName = "GrokMonitor" ReferencedContainer = "container:GrokMonitor.xcodeproj"/>
          </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
          <TestableReference skipped = "NO">
-            <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "{ids['test_target']}" BuildableName = "GrokUsageTests.xctest" BlueprintName = "GrokUsageTests" ReferencedContainer = "container:GrokUsage.xcodeproj"/>
+            <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "{ids['test_target']}" BuildableName = "GrokMonitorTests.xctest" BlueprintName = "GrokMonitorTests" ReferencedContainer = "container:GrokMonitor.xcodeproj"/>
          </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle = "0" useCustomWorkingDirectory = "NO" ignoresPersistentStateOnLaunch = "NO" debugDocumentVersioning = "YES" debugServiceExtension = "internal" allowLocationSimulation = "YES">
       <BuildableProductRunnable runnableDebuggingMode = "0">
-         <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "{ids['app_target']}" BuildableName = "Grok Usage.app" BlueprintName = "GrokUsage" ReferencedContainer = "container:GrokUsage.xcodeproj"/>
+         <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "{ids['app_target']}" BuildableName = "Grok Monitor.app" BlueprintName = "GrokMonitor" ReferencedContainer = "container:GrokMonitor.xcodeproj"/>
       </BuildableProductRunnable>
    </LaunchAction>
    <ProfileAction buildConfiguration = "Release" shouldUseLaunchSchemeArgsEnv = "YES" savedToolIdentifier = "" useCustomWorkingDirectory = "NO" debugDocumentVersioning = "YES">
       <BuildableProductRunnable runnableDebuggingMode = "0">
-         <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "{ids['app_target']}" BuildableName = "Grok Usage.app" BlueprintName = "GrokUsage" ReferencedContainer = "container:GrokUsage.xcodeproj"/>
+         <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "{ids['app_target']}" BuildableName = "Grok Monitor.app" BlueprintName = "GrokMonitor" ReferencedContainer = "container:GrokMonitor.xcodeproj"/>
       </BuildableProductRunnable>
    </ProfileAction>
    <AnalyzeAction buildConfiguration = "Debug"/>

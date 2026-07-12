@@ -16,7 +16,7 @@ final class UsagePoller: ObservableObject {
     private let history: HistoryStore
     private let settings: AppSettings
     private let notifier: ThresholdNotifier
-    private let logger = Logger(subsystem: "com.grokusage.app", category: "Poller")
+    private let logger = Logger(subsystem: "com.grokmonitor.app", category: "Poller")
 
     private var timerTask: Task<Void, Never>?
     private var backoffSeconds: TimeInterval = 0
@@ -71,9 +71,13 @@ final class UsagePoller: ObservableObject {
         isRefreshing = true
         defer { isRefreshing = false }
 
-        guard auth.isSignedIn else {
+        // needsSignIn means credentials were cleared after 401/403 — wait for re-auth
+        // instead of spinning on empty cookies every poll interval.
+        guard auth.isSignedIn, !auth.needsSignIn else {
             lastError = UsageClientError.notSignedIn.localizedDescription
-            auth.markSessionInvalid()
+            if !auth.isSignedIn {
+                auth.markSessionInvalid()
+            }
             return
         }
 

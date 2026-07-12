@@ -5,7 +5,7 @@ import os
 
 @MainActor
 final class ThresholdNotifier: ObservableObject {
-    private let logger = Logger(subsystem: "com.grokusage.app", category: "Alerts")
+    private let logger = Logger(subsystem: "com.grokmonitor.app", category: "Alerts")
     private var lastNotifiedThreshold: Double?
 
     func requestAuthorizationIfNeeded() {
@@ -43,7 +43,7 @@ final class ThresholdNotifier: ObservableObject {
 
     private func send(usedPercent: Double, threshold: Double) {
         let content = UNMutableNotificationContent()
-        content.title = "Grok Usage Alert"
+        content.title = "Grok Monitor Alert"
         content.body = String(
             format: "Weekly SuperGrok usage is at %.0f%% (threshold %.0f%%).",
             usedPercent,

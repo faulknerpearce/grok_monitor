@@ -10,7 +10,7 @@ import WebKit
 final class AuthSessionService: ObservableObject {
     static let shared = AuthSessionService()
 
-    private let logger = Logger(subsystem: "com.grokusage.app", category: "Auth")
+    private let logger = Logger(subsystem: "com.grokmonitor.app", category: "Auth")
 
     /// Cookie names that indicate a real authenticated session (not anonymous browsing).
     private static let authCookieHints: Set<String> = [
@@ -190,7 +190,8 @@ final class AuthSessionService: ObservableObject {
     private var storeDir: URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
-        let dir = base.appendingPathComponent("GrokUsage", isDirectory: true)
+        let dir = base.appendingPathComponent("GrokMonitor", isDirectory: true)
+        Self.migrateLegacyApplicationSupportIfNeeded(base: base, current: dir)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         // Restrict directory to the current user (0600 files below).
         try? FileManager.default.setAttributes(
@@ -198,6 +199,36 @@ final class AuthSessionService: ObservableObject {
             ofItemAtPath: dir.path
         )
         return dir
+    }
+
+    /// Best-effort copy from the pre-rename `GrokUsage` folder (same container or shared AS).
+    private static func migrateLegacyApplicationSupportIfNeeded(base: URL, current: URL) {
+        let fm = FileManager.default
+        let candidates = [
+            base.appendingPathComponent("GrokUsage", isDirectory: true),
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(
+                    "Library/Containers/com.grokusage.app/Data/Library/Application Support/GrokUsage",
+                    isDirectory: true
+                )
+        ]
+        let hasSession = fm.fileExists(atPath: current.appendingPathComponent("auth_session.dat").path)
+            || fm.fileExists(atPath: current.appendingPathComponent("auth_token.dat").path)
+        guard !hasSession else { return }
+
+        for legacy in candidates {
+            guard fm.fileExists(atPath: legacy.path),
+                  let items = try? fm.contentsOfDirectory(at: legacy, includingPropertiesForKeys: nil),
+                  !items.isEmpty
+            else { continue }
+            try? fm.createDirectory(at: current, withIntermediateDirectories: true)
+            for item in items {
+                let dest = current.appendingPathComponent(item.lastPathComponent)
+                guard !fm.fileExists(atPath: dest.path) else { continue }
+                try? fm.copyItem(at: item, to: dest)
+            }
+            break
+        }
     }
 
     private func storeURL(key: String) -> URL {
@@ -226,10 +257,14 @@ final class AuthSessionService: ObservableObject {
 /// Deletes legacy Keychain entries from earlier builds that cause access-dialog loops.
 enum KeychainCleanup {
     static func deleteLegacyItems() {
+        // Include pre-rename service IDs so old dialogs stay dead after the rename.
         let services = [
             "com.grokusage.app.cookies",
             "com.grokusage.app.account",
-            "com.grokusage.app.bearer"
+            "com.grokusage.app.bearer",
+            "com.grokmonitor.app.cookies",
+            "com.grokmonitor.app.account",
+            "com.grokmonitor.app.bearer"
         ]
         let accounts = ["session", "email", "token"]
         for service in services {

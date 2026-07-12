@@ -3,7 +3,7 @@ import AppKit
 import Combine
 
 @main
-struct GrokUsageApp: App {
+struct GrokMonitorApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var model = AppModel()
 
@@ -15,7 +15,7 @@ struct GrokUsageApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("Grok Usage", id: "preferences") {
+        Window("Grok Monitor", id: "preferences") {
             PreferencesRoot(model: model)
         }
         .defaultSize(width: 480, height: 640)

@@ -4,7 +4,7 @@ import os
 /// Lightweight discovery helpers for documenting live endpoint responses,
 /// including candidate daily-usage RPCs.
 enum UsageEndpointProbe {
-    private static let logger = Logger(subsystem: "com.grokusage.app", category: "Probe")
+    private static let logger = Logger(subsystem: "com.grokmonitor.app", category: "Probe")
 
     struct ProbeResult: Sendable {
         var url: URL

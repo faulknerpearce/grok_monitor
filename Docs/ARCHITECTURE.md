@@ -2,7 +2,7 @@
 
 ## Overview
 
-Grok Usage is a SwiftUI agent-style macOS app (`LSUIElement` + `MenuBarExtra`) that authenticates to grok.com, polls usage endpoints, and renders weekly SuperGrok pool metrics in the menu bar and dropdown.
+Grok Monitor is a SwiftUI agent-style macOS app (`LSUIElement` + `MenuBarExtra`) that authenticates to grok.com, polls usage endpoints, and renders weekly SuperGrok pool metrics in the menu bar and dropdown.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -27,7 +27,7 @@ Grok Usage is a SwiftUI agent-style macOS app (`LSUIElement` + `MenuBarExtra`) t
 | Area | Responsibility |
 |------|----------------|
 | `App/` | `MenuBarExtra` scenes, `AppDelegate` activation policy |
-| `Auth/` | WKWebView login, Application Support cookie/bearer persistence, CLI auth import |
+| `Auth/` | WKWebView login, Application Support cookie/bearer persistence |
 | `Usage/` | Models, HTTP client, gRPC-web parser, poller, endpoint probe |
 | `MenuBar/` | Label, panel, segmented bar, category rows |
 | `History/` | SwiftData snapshots, charts, CSV/JSON export |
@@ -36,7 +36,7 @@ Grok Usage is a SwiftUI agent-style macOS app (`LSUIElement` + `MenuBarExtra`) t
 
 ## Data flow
 
-1. On launch, `AuthSessionService` restores Application Support credentials (and may import `~/.grok/auth.json`).
+1. On launch, `AuthSessionService` restores Application Support credentials.
 2. `UsagePoller` starts a loop: active interval while the menu is open, idle interval otherwise; pauses across sleep/wake.
 3. `UsageClient.fetchUsage()` tries REST JSON candidates, then grok.com gRPC-web billing, then CLI billing JSON.
 4. Successful snapshots update the UI and append to SwiftData (deduped).
@@ -47,7 +47,7 @@ Grok Usage is a SwiftUI agent-style macOS app (`LSUIElement` + `MenuBarExtra`) t
 
 Session cookies and optional bearer tokens are stored as mode `0600` files under:
 
-`~/Library/Application Support/GrokUsage/auth_*.dat`
+`~/Library/Application Support/GrokMonitor/auth_*.dat`
 
 Keychain is intentionally avoided: unsigned/debug builds repeatedly prompt “wants to access the keychain.” Legacy Keychain items from earlier builds are deleted on launch.
 

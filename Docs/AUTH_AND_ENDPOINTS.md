@@ -8,13 +8,11 @@ Grok does not publish a stable public consumer API for the Weekly SuperGrok pool
 
 1. User signs in inside an embedded `WKWebView` pointed at `https://grok.com/?_s=usage`.
 2. After navigation returns to `grok.com`, cookies are read from `WKWebsiteDataStore.default().httpCookieStore`.
-3. Cookies scoped to `grok.com` / `x.ai` / `x.com` are serialized into a `Cookie` header and stored under Application Support (`~/Library/Application Support/GrokUsage/auth_session.dat`, mode `0600`).
+3. Cookies scoped to `grok.com` / `x.ai` / `x.com` are serialized into a `Cookie` header and stored under Application Support (`~/Library/Application Support/GrokMonitor/auth_session.dat`, mode `0600`).
 
 `ASWebAuthenticationSession` is **not** used because its cookies live in the system jar and are not readable by the app. Keychain is also avoided to prevent access-dialog loops in unsigned debug builds.
 
-### Secondary: Grok CLI bearer (`~/.grok/auth.json`)
-
-If Application Support has no session, the app imports a non-expired `key` from `~/.grok/auth.json` (created by `grok login`) and sends `Authorization: Bearer …`.
+Optional bearer tokens captured during WebKit sign-in (or saved under Application Support) are sent as `Authorization: Bearer …` when present. The app no longer imports `~/.grok/auth.json` from the Grok CLI.
 
 ## Endpoints (ordered)
 
@@ -101,4 +99,4 @@ Prefer documenting any newly observed schema here when xAI changes payloads.
 
 ## Fixture
 
-`GrokUsage/Fixtures/usage_fixture.json` mirrors the reference UI numbers for offline previews and tests.
+`GrokMonitor/Fixtures/usage_fixture.json` mirrors the reference UI numbers for offline previews and tests.

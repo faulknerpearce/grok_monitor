@@ -22,7 +22,7 @@ final class AppSettings: ObservableObject {
 
     @Published var activePollSeconds: Int {
         didSet {
-            let clamped = max(15, min(300, activePollSeconds))
+            let clamped = Self.clampActivePoll(activePollSeconds)
             if activePollSeconds != clamped { activePollSeconds = clamped }
             defaults.set(activePollSeconds, forKey: Keys.activePoll)
         }
@@ -30,7 +30,7 @@ final class AppSettings: ObservableObject {
 
     @Published var idlePollSeconds: Int {
         didSet {
-            let clamped = max(15, min(3600, idlePollSeconds))
+            let clamped = Self.clampIdlePoll(idlePollSeconds)
             if idlePollSeconds != clamped { idlePollSeconds = clamped }
             defaults.set(idlePollSeconds, forKey: Keys.idlePoll)
         }
@@ -63,8 +63,9 @@ final class AppSettings: ObservableObject {
     init() {
         showCategoriesInMenuBar = defaults.object(forKey: Keys.showCategories) as? Bool ?? true
         showBarGraphInMenuBar = defaults.object(forKey: Keys.showBar) as? Bool ?? true
-        activePollSeconds = defaults.object(forKey: Keys.activePoll) as? Int ?? 60
-        idlePollSeconds = defaults.object(forKey: Keys.idlePoll) as? Int ?? 300
+        // Clamp on load — didSet does not run during init.
+        activePollSeconds = Self.clampActivePoll(defaults.object(forKey: Keys.activePoll) as? Int ?? 60)
+        idlePollSeconds = Self.clampIdlePoll(defaults.object(forKey: Keys.idlePoll) as? Int ?? 300)
         thresholdEnabled = defaults.object(forKey: Keys.thresholdEnabled) as? Bool ?? true
         thresholdPercent = defaults.object(forKey: Keys.thresholdPercent) as? Double ?? 80
         let products = defaults.stringArray(forKey: Keys.visibleProducts)
@@ -72,6 +73,9 @@ final class AppSettings: ObservableObject {
         visibleProductIDs = Set(products)
         launchAtLogin = SMAppService.mainApp.status == .enabled
     }
+
+    private static func clampActivePoll(_ value: Int) -> Int { max(15, min(300, value)) }
+    private static func clampIdlePoll(_ value: Int) -> Int { max(15, min(3600, value)) }
 
     func filteredProducts(from snapshot: WeeklyUsageSnapshot) -> [ProductUsage] {
         ProductCatalog.sortForDisplay(

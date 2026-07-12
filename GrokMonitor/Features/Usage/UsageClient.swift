@@ -3,7 +3,7 @@ import os
 
 /// Fetches SuperGrok weekly usage via authenticated grok.com / CLI endpoints.
 struct UsageClient: Sendable {
-    private let logger = Logger(subsystem: "com.grokusage.app", category: "UsageClient")
+    private let logger = Logger(subsystem: "com.grokmonitor.app", category: "UsageClient")
 
     /// Primary gRPC-web billing endpoint used by grok.com Settings → Usage.
     static let billingEndpoint = URL(
@@ -105,7 +105,7 @@ struct UsageClient: Sendable {
         request.setValue("*/*", forHTTPHeaderField: "Accept")
         request.setValue("https://grok.com", forHTTPHeaderField: "Origin")
         request.setValue("https://grok.com/?_s=usage", forHTTPHeaderField: "Referer")
-        request.setValue("GrokUsage/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("GrokMonitor/1.0", forHTTPHeaderField: "User-Agent")
 
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else {
@@ -197,7 +197,7 @@ struct UsageClient: Sendable {
     static func loadFixture() throws -> WeeklyUsageSnapshot {
         let bundles: [Bundle] = [.main]
         #if SWIFT_PACKAGE
-        bundles.append(contentsOf: Bundle.allBundles.filter { $0.bundlePath.hasSuffix("GrokUsage_GrokUsage.bundle") })
+        bundles.append(contentsOf: Bundle.allBundles.filter { $0.bundlePath.hasSuffix("GrokMonitor_GrokMonitor.bundle") })
         #endif
         for bundle in bundles {
             if let url = bundle.url(forResource: "usage_fixture", withExtension: "json"),

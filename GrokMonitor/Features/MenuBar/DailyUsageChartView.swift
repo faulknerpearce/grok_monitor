@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Settings → Usage style “Daily use (% of weekly)” stacked bar chart.
+/// Settings → Usage style “Daily use” stacked bar chart.
 ///
 /// Each day’s track represents that day’s equal share of the weekly pool (`100/7`).
 /// Fill height = dayUsage / dailyCap (capped at a full track).
@@ -44,6 +44,12 @@ struct DailyUsageChartView: View {
 
             if !week.legendProducts.isEmpty {
                 legend
+            }
+
+            if week.isEstimated || !week.hasDailyData {
+                Text("Prior days fill in as usage is sampled across the week.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
             }
         }
     }
@@ -89,8 +95,18 @@ struct DailyUsageChartView: View {
     }
 
     private var legend: some View {
+        let items = week.legendProducts
+        return VStack(alignment: .leading, spacing: 6) {
+            legendRow(Array(items.prefix(3)))
+            if items.count > 3 {
+                legendRow(Array(items.dropFirst(3)))
+            }
+        }
+    }
+
+    private func legendRow(_ items: [DailyUsageLegendItem]) -> some View {
         HStack(alignment: .center, spacing: 12) {
-            ForEach(week.legendProducts) { item in
+            ForEach(items) { item in
                 legendItem(item)
             }
             Spacer(minLength: 0)
@@ -106,11 +122,10 @@ struct DailyUsageChartView: View {
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
         }
     }
 
-    /// Short labels so Chat / Build / API fit on one row without wrapping.
+    /// Short labels so Chat / Build / API fit without overflowing the panel.
     private func legendLabel(for item: DailyUsageLegendItem) -> String {
         switch item.id.lowercased() {
         case "build": return "Build"

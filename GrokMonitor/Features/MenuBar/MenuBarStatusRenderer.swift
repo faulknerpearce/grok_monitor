@@ -51,9 +51,17 @@ enum MenuBarStatusRenderer {
         showCategories: Bool,
         visibleProductIDs: Set<String>
     ) -> String {
-        guard let snap = snapshot else { return "unsigned" }
+        // Bake appearance into the key — labelColor bitmaps are appearance-specific.
+        let appearance = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])?.rawValue
+            ?? NSApp.effectiveAppearance.name.rawValue
+        guard let snap = snapshot else { return "unsigned-\(appearance)" }
         let products = menuBarProducts(from: snap, visibleProductIDs: visibleProductIDs)
-        return "\(Int(snap.usedPercent))-\(isSignedIn)-\(showBar)-\(showCategories)-\(products.map { "\($0.id):\(Int($0.percentOfPool))" }.joined(separator: ","))-\(visibleProductIDs.sorted().joined(separator: ","))"
+        // Match display rounding so 37.6% ("38%") does not reuse a "37" bitmap.
+        let used = Int(snap.usedPercent.rounded())
+        let productKey = products
+            .map { "\($0.id):\(Int($0.percentOfPool.rounded()))" }
+            .joined(separator: ",")
+        return "\(used)-\(isSignedIn)-\(showBar)-\(showCategories)-\(productKey)-\(visibleProductIDs.sorted().joined(separator: ","))-\(appearance)"
     }
 
     private static func _render(

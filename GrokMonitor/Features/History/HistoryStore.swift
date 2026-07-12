@@ -11,13 +11,14 @@ final class UsageSnapshotRecord {
     var remainingPercent: Double
     var resetsAt: Date?
     var productsJSON: Data
-    var extraCredits: Decimal?
+    /// Stored as Double for SwiftData schema stability; domain model uses Decimal.
+    var extraCredits: Double?
     var accountEmail: String?
     var rawPayload: Data?
 
     private static let encoder = JSONEncoder()
     private static let decoder = JSONDecoder()
-    private static let logger = Logger(subsystem: "com.grokusage.app", category: "History")
+    private static let logger = Logger(subsystem: "com.grokmonitor.app", category: "History")
 
     init(from snapshot: WeeklyUsageSnapshot) {
         self.id = snapshot.id
@@ -31,7 +32,7 @@ final class UsageSnapshotRecord {
             Self.logger.error("Failed to encode products for snapshot \(snapshot.id)")
             self.productsJSON = Data()
         }
-        self.extraCredits = snapshot.extraCreditsBalance
+        self.extraCredits = snapshot.extraCreditsBalance.map { NSDecimalNumber(decimal: $0).doubleValue }
         self.accountEmail = snapshot.accountEmail
         self.rawPayload = snapshot.rawPayload
     }
@@ -46,7 +47,7 @@ final class UsageSnapshotRecord {
         } else {
             Self.logger.error("Failed to encode products on apply for \(snapshot.id)")
         }
-        extraCredits = snapshot.extraCreditsBalance
+        extraCredits = snapshot.extraCreditsBalance.map { NSDecimalNumber(decimal: $0).doubleValue }
         accountEmail = snapshot.accountEmail
         rawPayload = snapshot.rawPayload
     }
@@ -66,7 +67,7 @@ final class UsageSnapshotRecord {
             remainingPercent: remainingPercent,
             resetsAt: resetsAt,
             products: products,
-            extraCreditsBalance: extraCredits,
+            extraCreditsBalance: extraCredits.map { Decimal($0) },
             accountEmail: accountEmail,
             rawPayload: rawPayload
         )
@@ -75,7 +76,7 @@ final class UsageSnapshotRecord {
 
 @MainActor
 final class HistoryStore: ObservableObject {
-    private static let logger = Logger(subsystem: "com.grokusage.app", category: "HistoryStore")
+    private static let logger = Logger(subsystem: "com.grokmonitor.app", category: "HistoryStore")
 
     private var container: ModelContainer?
     private var context: ModelContext?
@@ -84,7 +85,13 @@ final class HistoryStore: ObservableObject {
 
     init(inMemory: Bool = false) {
         do {
-            let config = ModelConfiguration(isStoredInMemoryOnly: inMemory)
+            let config: ModelConfiguration
+            if inMemory {
+                config = ModelConfiguration(isStoredInMemoryOnly: true)
+            } else {
+                let storeURL = Self.persistentStoreURL()
+                config = ModelConfiguration(url: storeURL)
+            }
             let container = try ModelContainer(for: UsageSnapshotRecord.self, configurations: config)
             self.container = container
             self.context = ModelContext(container)
@@ -92,6 +99,41 @@ final class HistoryStore: ObservableObject {
         } catch {
             Self.logger.error("SwiftData init failed: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    /// Stable Application Support store so history survives the rename when migration succeeds.
+    private static func persistentStoreURL() -> URL {
+        let fm = FileManager.default
+        let base = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? fm.temporaryDirectory
+        let dir = base.appendingPathComponent("GrokMonitor", isDirectory: true)
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        let storeURL = dir.appendingPathComponent("history.store")
+
+        if !fm.fileExists(atPath: storeURL.path) {
+            let legacyCandidates = [
+                base.appendingPathComponent("GrokUsage/history.store"),
+                base.appendingPathComponent("default.store"),
+                FileManager.default.homeDirectoryForCurrentUser
+                    .appendingPathComponent(
+                        "Library/Containers/com.grokusage.app/Data/Library/Application Support/default.store"
+                    )
+            ]
+            for legacy in legacyCandidates {
+                guard fm.fileExists(atPath: legacy.path) else { continue }
+                try? fm.copyItem(at: legacy, to: storeURL)
+                // Also copy sidecar files SwiftData may use.
+                for suffix in ["-shm", "-wal"] {
+                    let side = URL(fileURLWithPath: legacy.path + suffix)
+                    let dest = URL(fileURLWithPath: storeURL.path + suffix)
+                    if fm.fileExists(atPath: side.path), !fm.fileExists(atPath: dest.path) {
+                        try? fm.copyItem(at: side, to: dest)
+                    }
+                }
+                break
+            }
+        }
+        return storeURL
     }
 
     func append(_ snapshot: WeeklyUsageSnapshot) {

@@ -8,10 +8,12 @@ struct MenuBarLabelView: View {
     let showCategories: Bool
     let visibleProductIDs: Set<String>
 
+    @Environment(\.colorScheme) private var colorScheme
+
     private var labelID: String {
         let products = visibleProductIDs.sorted().joined(separator: ",")
         let used = snapshot.map { Int($0.usedPercent.rounded()) } ?? -1
-        return "\(showBar)-\(showCategories)-\(products)-\(used)-\(isSignedIn)"
+        return "\(showBar)-\(showCategories)-\(products)-\(used)-\(isSignedIn)-\(colorScheme)"
     }
 
     var body: some View {

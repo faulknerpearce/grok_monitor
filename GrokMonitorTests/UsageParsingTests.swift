@@ -1,5 +1,5 @@
 import XCTest
-@testable import GrokUsage
+@testable import GrokMonitor
 
 final class UsageParsingTests: XCTestCase {
     func testParseFixtureJSON() throws {

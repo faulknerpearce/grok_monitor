@@ -1,4 +1,4 @@
-# Grok Usage
+# Grok Monitor
 
 A native macOS menu bar app for tracking your **Weekly SuperGrok** usage pool in real time.
 
@@ -8,7 +8,7 @@ A native macOS menu bar app for tracking your **Weekly SuperGrok** usage pool in
 
 ## Overview
 
-Grok Usage sits in the macOS menu bar and shows how much of your SuperGrok weekly limit you have used — overall and by product (Chat, Grok Build, API, and others when present). Sign in once with your Grok account; the app polls authenticated grok.com endpoints and keeps a local history for the daily chart.
+Grok Monitor sits in the macOS menu bar and shows how much of your SuperGrok weekly limit you have used — overall and by product (Chat, Grok Build, API, and others when present). Sign in once with your Grok account; the app polls authenticated grok.com endpoints and keeps a local history for the daily chart.
 
 ## Features
 
@@ -17,7 +17,7 @@ Grok Usage sits in the macOS menu bar and shows how much of your SuperGrok weekl
 | **Menu bar** | Compact status: Grok icon, used %, optional filling pill, optional Chat / Build / API chips |
 | **Dropdown** | Weekly used / remaining, segmented bar, category breakdown, daily bars, reset time |
 | **Daily use** | Billing-week chart (`100/7` daily cap); day-over-day deltas from local history |
-| **Auth** | WKWebView sign-in; session cookies in Application Support; optional `~/.grok/auth.json` import |
+| **Auth** | WKWebView sign-in; session cookies in Application Support |
 | **Polling** | Faster refresh while the menu is open; backoff on errors; sleep / wake aware |
 | **History** | SwiftData snapshots, charts window, CSV / JSON export |
 | **Alerts** | Optional threshold notifications |
@@ -35,12 +35,12 @@ Grok Usage sits in the macOS menu bar and shows how much of your SuperGrok weekl
 ### 1. Open the project
 
 ```bash
-git clone git@github.com:faulknerpearce/grok_usage.git
-cd grok_usage
-open GrokUsage.xcodeproj
+git clone git@github.com:faulknerpearce/grok_monitor.git
+cd grok_monitor
+open GrokMonitor.xcodeproj
 ```
 
-Select the **GrokUsage** scheme → **My Mac** → Run (⌘R). The app appears in the menu bar (no Dock icon).
+Select the **GrokMonitor** scheme → **My Mac** → Run (⌘R). The app appears in the menu bar (no Dock icon).
 
 ### 2. Sign in
 
@@ -48,6 +48,8 @@ Select the **GrokUsage** scheme → **My Mac** → Run (⌘R). The app appears i
 2. Complete login on `accounts.x.ai` / grok.com in the sign-in window
 3. If capture does not happen automatically, click **I'm signed in — Capture Session**
 4. Usage appears after the first successful refresh
+
+> **Rename note:** This project was previously `grok_usage` / `Grok Usage` (`com.grokusage.app`). The bundle ID is now `com.grokmonitor.app`. Prefer signing in again after upgrading; the app will best-effort migrate Application Support auth/history when the old files are readable.
 
 ## Build from the command line
 
@@ -62,15 +64,15 @@ Debug build:
 
 ```bash
 xcodebuild \
-  -project GrokUsage.xcodeproj \
-  -scheme GrokUsage \
+  -project GrokMonitor.xcodeproj \
+  -scheme GrokMonitor \
   -configuration Debug \
   -destination 'platform=macOS' \
   -derivedDataPath build/DerivedData \
   CODE_SIGN_IDENTITY="-" \
   build
 
-open "build/DerivedData/Build/Products/Debug/Grok Usage.app"
+open "build/DerivedData/Build/Products/Debug/Grok Monitor.app"
 ```
 
 After adding source files, regenerate the Xcode project if needed:
@@ -85,8 +87,8 @@ Full Xcode test suite:
 
 ```bash
 xcodebuild \
-  -project GrokUsage.xcodeproj \
-  -scheme GrokUsage \
+  -project GrokMonitor.xcodeproj \
+  -scheme GrokMonitor \
   -destination 'platform=macOS' \
   -derivedDataPath build/DerivedData \
   test
@@ -101,7 +103,7 @@ Core parsers / builders without launching the app:
 ## Project layout
 
 ```
-GrokUsage/
+GrokMonitor/
   App/           Entry point, AppDelegate
   Features/
     Auth/        WKWebView sign-in, session storage
@@ -113,14 +115,14 @@ GrokUsage/
   Resources/     Info.plist, entitlements, assets
 Docs/            Architecture, auth/endpoints, notarization
 Scripts/         Xcode project generator, tests, notarize
-GrokUsageTests/  XCTest suite
+GrokMonitorTests/  XCTest suite
 ```
 
 ## Privacy
 
 - Session cookies and optional bearer tokens are stored as **user-only** files under Application Support (not Keychain — avoids access-dialog loops on ad-hoc debug builds).
 - Sandboxed container path (typical):  
-  `~/Library/Containers/com.grokusage.app/Data/Library/Application Support/GrokUsage/`
+  `~/Library/Containers/com.grokmonitor.app/Data/Library/Application Support/GrokMonitor/`
 - Network access is limited to xAI / Grok hosts for usage and auth.
 - History stays on this Mac (SwiftData). No third-party telemetry.
 

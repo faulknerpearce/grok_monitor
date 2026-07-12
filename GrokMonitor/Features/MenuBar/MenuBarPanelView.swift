@@ -165,14 +165,14 @@ struct MenuBarPanelView: View {
 
             Divider().padding(.vertical, 4)
 
-            panelButton("Open Grok Usage…", shortcut: "⌘O", action: openPreferences)
+            panelButton("Open Grok Monitor…", shortcut: "⌘O", action: openPreferences)
                 .keyboardShortcut("o", modifiers: [.command])
 
             panelButton("Usage History…", shortcut: nil, action: openCharts)
 
             Divider().padding(.vertical, 4)
 
-            panelButton("Quit Grok Usage", shortcut: "⌘Q") {
+            panelButton("Quit Grok Monitor", shortcut: "⌘Q") {
                 NSApp.terminate(nil)
             }
             .keyboardShortcut("q", modifiers: [.command])

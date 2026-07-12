@@ -6,17 +6,17 @@ Requires an Apple Developer Program membership and **Xcode.app** with a Develope
 
 In Xcode:
 
-1. Scheme **GrokUsage** → Any Mac
+1. Scheme **GrokMonitor** → Any Mac
 2. Product → Archive
 3. Distribute App → Developer ID → Upload / Export
 
 Or from the command line (with Xcode selected via `xcode-select`):
 
 ```bash
-xcodebuild -project GrokUsage.xcodeproj -scheme GrokUsage -configuration Release \
-  -archivePath build/GrokUsage.xcarchive archive
+xcodebuild -project GrokMonitor.xcodeproj -scheme GrokMonitor -configuration Release \
+  -archivePath build/GrokMonitor.xcarchive archive
 
-xcodebuild -exportArchive -archivePath build/GrokUsage.xcarchive \
+xcodebuild -exportArchive -archivePath build/GrokMonitor.xcarchive \
   -exportPath build/export \
   -exportOptionsPlist Scripts/ExportOptions.plist
 ```
@@ -40,7 +40,7 @@ The script zips the app, submits with `notarytool`, waits, then staples the tick
 
 ## Sandbox entitlements
 
-`GrokUsage/Resources/GrokUsage.entitlements` enables:
+`GrokMonitor/Resources/GrokMonitor.entitlements` enables:
 
 - App Sandbox
 - Outgoing network client
@@ -49,6 +49,6 @@ The script zips the app, submits with `notarytool`, waits, then staples the tick
 ## Gatekeeper check
 
 ```bash
-spctl --assess --type execute -v "Grok Usage.app"
-stapler validate "Grok Usage.app"
+spctl --assess --type execute -v "Grok Monitor.app"
+stapler validate "Grok Monitor.app"
 ```
