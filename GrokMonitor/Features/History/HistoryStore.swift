@@ -109,31 +109,68 @@ final class HistoryStore: ObservableObject {
         let dir = base.appendingPathComponent("GrokMonitor", isDirectory: true)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         let storeURL = dir.appendingPathComponent("history.store")
-
-        if !fm.fileExists(atPath: storeURL.path) {
-            let legacyCandidates = [
-                base.appendingPathComponent("GrokUsage/history.store"),
-                base.appendingPathComponent("default.store"),
-                FileManager.default.homeDirectoryForCurrentUser
-                    .appendingPathComponent(
-                        "Library/Containers/com.grokusage.app/Data/Library/Application Support/default.store"
-                    )
-            ]
-            for legacy in legacyCandidates {
-                guard fm.fileExists(atPath: legacy.path) else { continue }
-                try? fm.copyItem(at: legacy, to: storeURL)
-                // Also copy sidecar files SwiftData may use.
-                for suffix in ["-shm", "-wal"] {
-                    let side = URL(fileURLWithPath: legacy.path + suffix)
-                    let dest = URL(fileURLWithPath: storeURL.path + suffix)
-                    if fm.fileExists(atPath: side.path), !fm.fileExists(atPath: dest.path) {
-                        try? fm.copyItem(at: side, to: dest)
-                    }
-                }
-                break
-            }
-        }
+        migrateLegacyStoreIfNeeded(to: storeURL, applicationSupportBase: base)
         return storeURL
+    }
+
+    /// Import pre-rename SwiftData (`com.grokusage.app` used `default.store`).
+    /// Runs once, and also replaces a clearly smaller/newer empty store.
+    private static func migrateLegacyStoreIfNeeded(to storeURL: URL, applicationSupportBase base: URL) {
+        let fm = FileManager.default
+        let flagKey = "didMigrateGrokUsageHistoryV1"
+        let legacyCandidates = [
+            FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(
+                    "Library/Containers/com.grokusage.app/Data/Library/Application Support/default.store"
+                ),
+            base.appendingPathComponent("default.store"),
+            base.appendingPathComponent("GrokUsage/history.store"),
+            base.appendingPathComponent("GrokUsage/default.store")
+        ]
+
+        guard let legacy = legacyCandidates.first(where: { fm.fileExists(atPath: $0.path) }) else {
+            return
+        }
+
+        let legacySize = (try? fm.attributesOfItem(atPath: legacy.path)[.size] as? NSNumber)?.intValue ?? 0
+        let currentExists = fm.fileExists(atPath: storeURL.path)
+        let currentSize = currentExists
+            ? ((try? fm.attributesOfItem(atPath: storeURL.path)[.size] as? NSNumber)?.intValue ?? 0)
+            : 0
+
+        let alreadyMigrated = UserDefaults.standard.bool(forKey: flagKey)
+        let shouldReplace = !currentExists || currentSize + 2048 < legacySize
+        guard shouldReplace else {
+            if !alreadyMigrated { UserDefaults.standard.set(true, forKey: flagKey) }
+            return
+        }
+        if alreadyMigrated && currentExists && currentSize >= legacySize {
+            return
+        }
+
+        do {
+            if currentExists {
+                try fm.removeItem(at: storeURL)
+            }
+            for suffix in ["-shm", "-wal"] {
+                let side = URL(fileURLWithPath: storeURL.path + suffix)
+                if fm.fileExists(atPath: side.path) {
+                    try? fm.removeItem(at: side)
+                }
+            }
+            try fm.copyItem(at: legacy, to: storeURL)
+            for suffix in ["-shm", "-wal"] {
+                let side = URL(fileURLWithPath: legacy.path + suffix)
+                let dest = URL(fileURLWithPath: storeURL.path + suffix)
+                if fm.fileExists(atPath: side.path) {
+                    try? fm.copyItem(at: side, to: dest)
+                }
+            }
+            UserDefaults.standard.set(true, forKey: flagKey)
+            logger.info("Migrated legacy history store from \(legacy.path, privacy: .public)")
+        } catch {
+            logger.error("History migration failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     func append(_ snapshot: WeeklyUsageSnapshot) {

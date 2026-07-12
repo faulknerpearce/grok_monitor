@@ -51,17 +51,16 @@ enum MenuBarStatusRenderer {
         showCategories: Bool,
         visibleProductIDs: Set<String>
     ) -> String {
-        // Bake appearance into the key — labelColor bitmaps are appearance-specific.
-        let appearance = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])?.rawValue
-            ?? NSApp.effectiveAppearance.name.rawValue
-        guard let snap = snapshot else { return "unsigned-\(appearance)" }
+        // Bake menu-bar chrome appearance into the key (black vs white).
+        let chrome = menuBarIsDark ? "dark" : "light"
+        guard let snap = snapshot else { return "unsigned-\(chrome)" }
         let products = menuBarProducts(from: snap, visibleProductIDs: visibleProductIDs)
         // Match display rounding so 37.6% ("38%") does not reuse a "37" bitmap.
         let used = Int(snap.usedPercent.rounded())
         let productKey = products
             .map { "\($0.id):\(Int($0.percentOfPool.rounded()))" }
             .joined(separator: ",")
-        return "\(used)-\(isSignedIn)-\(showBar)-\(showCategories)-\(productKey)-\(visibleProductIDs.sorted().joined(separator: ","))-\(appearance)"
+        return "\(used)-\(isSignedIn)-\(showBar)-\(showCategories)-\(productKey)-\(visibleProductIDs.sorted().joined(separator: ","))-\(chrome)"
     }
 
     private static func _render(
@@ -74,7 +73,9 @@ enum MenuBarStatusRenderer {
         let height: CGFloat = 22
         let font = NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: .medium)
         let smallFont = NSFont.systemFont(ofSize: 12.5, weight: .medium)
-        let textColor = NSColor.labelColor
+        // Do not use labelColor here — it follows the *app* appearance and bakes white
+        // text when the app is dark even if the menu bar is light.
+        let textColor = chromeColor
         let iconSize: CGFloat = 16
         let barWidth: CGFloat = 48
         let barHeight: CGFloat = 8
@@ -128,7 +129,7 @@ enum MenuBarStatusRenderer {
 
         if showBar {
             let barRect = NSRect(x: x, y: midY - barHeight / 2, width: barWidth, height: barHeight)
-            NSColor.labelColor.withAlphaComponent(0.14).setFill()
+            chromeColor.withAlphaComponent(0.14).setFill()
             NSBezierPath(roundedRect: barRect, xRadius: barHeight / 2, yRadius: barHeight / 2).fill()
 
             let segments = products.isEmpty
@@ -185,7 +186,7 @@ enum MenuBarStatusRenderer {
     private static func drawGrokIcon(in rect: NSRect) {
         if let icon = grokIconTemplate {
             NSGraphicsContext.saveGraphicsState()
-            NSColor.labelColor.set()
+            chromeColor.set()
             icon.size = rect.size
             icon.draw(
                 in: rect,
@@ -244,7 +245,7 @@ enum MenuBarStatusRenderer {
         path.line(to: p(5.409, 5.217))
         path.close()
 
-        NSColor.labelColor.setFill()
+        chromeColor.setFill()
         path.fill()
     }
 
@@ -294,5 +295,21 @@ enum MenuBarStatusRenderer {
     private static func nsColor(_ token: ProductColor) -> NSColor {
         let c = token.sRGB
         return NSColor(calibratedRed: c.red, green: c.green, blue: c.blue, alpha: c.alpha)
+    }
+
+    /// Black on light menu bars, white on dark — based on the status-item host when available.
+    private static var chromeColor: NSColor {
+        menuBarIsDark ? .white : .black
+    }
+
+    private static var menuBarIsDark: Bool {
+        for window in NSApp.windows {
+            let name = window.className
+            if name.contains("StatusBar") || name.contains("MenuBarExtra") || name.contains("NSStatusItem") {
+                return window.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            }
+        }
+        // Prefer black chrome when we can't probe the menu bar (avoids baked-white text).
+        return false
     }
 }
