@@ -35,6 +35,10 @@ final class AuthSessionService: ObservableObject {
         if let reason {
             lastAuthError = reason
         }
+        removeStore(key: "session")
+        removeStore(key: "token")
+        removeStore(key: "email")
+        logger.info("Session marked invalid, on-disk auth cleared")
     }
 
     func refreshFromDisk() {
@@ -122,7 +126,12 @@ final class AuthSessionService: ObservableObject {
         removeStore(key: "session")
         removeStore(key: "token")
         removeStore(key: "email")
-        HTTPCookieStorage.shared.cookies?.forEach { HTTPCookieStorage.shared.deleteCookie($0) }
+        let storage = HTTPCookieStorage.shared
+        for domain in ["grok.com", "x.ai", "x.com"] {
+            if let url = URL(string: "https://\(domain)") {
+                storage.cookies(for: url)?.forEach { storage.deleteCookie($0) }
+            }
+        }
         Task {
             await WKWebsiteDataStoreBridge.shared.clearCookies()
         }
@@ -145,17 +154,15 @@ final class AuthSessionService: ObservableObject {
 
     private func looksLikeAuthCookie(_ cookie: HTTPCookie) -> Bool {
         let name = cookie.name.lowercased()
-        if Self.authCookieHints.contains(where: { name.contains($0) }) {
-            return true
-        }
-        return cookie.value.count >= 24
+        guard Self.authCookieHints.contains(where: { name.contains($0) }) else { return false }
+        return cookie.isSecure || cookie.isHTTPOnly
     }
 
     private func extractEmail(from cookies: [HTTPCookie]) -> String? {
-        for cookie in cookies {
-            let name = cookie.name.lowercased()
-            if name.contains("email"), cookie.value.contains("@") {
-                return cookie.value.removingPercentEncoding ?? cookie.value
+        for cookie in cookies where ["email", "user_email"].contains(cookie.name.lowercased()) {
+            let decoded = cookie.value.removingPercentEncoding ?? cookie.value
+            if decoded.contains("@") && decoded.contains(".") {
+                return decoded
             }
         }
         return nil
@@ -255,7 +262,11 @@ final class WKWebsiteDataStoreBridgeImpl {
 
     func clearCookies() async {
         let cookies = await allCookies()
-        for cookie in cookies {
+        let relevant = cookies.filter { cookie in
+            let d = cookie.domain.lowercased()
+            return d.contains("grok.com") || d.contains("x.ai") || d.contains("x.com")
+        }
+        for cookie in relevant {
             await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
                 WKWebsiteDataStore.default().httpCookieStore.delete(cookie) {
                     continuation.resume()
