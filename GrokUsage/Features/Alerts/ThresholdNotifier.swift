@@ -9,10 +9,18 @@ final class ThresholdNotifier: ObservableObject {
     private var lastNotifiedThreshold: Double?
 
     func requestAuthorizationIfNeeded() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { [weak self] _, error in
-            guard let error else { return }
-            Task { @MainActor in
-                self?.logger.error("Notification auth failed: \(error.localizedDescription, privacy: .public)")
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { [weak self] settings in
+            guard settings.authorizationStatus == .notDetermined else { return }
+            center.requestAuthorization(options: [.alert, .sound]) { [weak self] granted, error in
+                Task { @MainActor in
+                    if let error {
+                        self?.logger.error("Notification auth failed: \(error.localizedDescription, privacy: .public)")
+                    }
+                    if !granted {
+                        self?.logger.info("User denied notification permission")
+                    }
+                }
             }
         }
     }
