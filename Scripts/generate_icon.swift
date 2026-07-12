@@ -2,7 +2,8 @@
 import AppKit
 import Foundation
 
-/// Black Grok singularity mark on a transparent canvas — same style as Coin Monitor's ₿ icon.
+/// Black Grok singularity mark on a white rounded plate — visible in Spotlight / Finder
+/// (pure black-on-transparent disappears on dark Spotlight rows).
 
 func grokPath(in rect: NSRect) -> NSBezierPath {
     let s = min(rect.width, rect.height) / 16
@@ -69,9 +70,25 @@ func drawIcon(size: Int, path: String) {
     NSGraphicsContext.current = nsCtx
     defer { NSGraphicsContext.restoreGraphicsState() }
 
-    // Leave a small margin so the mark doesn't clip at tiny sizes.
-    let inset = pixels * 0.08
-    let drawRect = NSRect(x: inset, y: inset, width: pixels - inset * 2, height: pixels - inset * 2)
+    // White rounded plate so the black mark stays visible in dark Spotlight / Finder.
+    let plateInset = max(1, pixels * 0.02)
+    let plateRect = NSRect(
+        x: plateInset,
+        y: plateInset,
+        width: pixels - plateInset * 2,
+        height: pixels - plateInset * 2
+    )
+    let corner = pixels * 0.22
+    NSColor.white.setFill()
+    NSBezierPath(roundedRect: plateRect, xRadius: corner, yRadius: corner).fill()
+
+    let markInset = pixels * 0.18
+    let drawRect = NSRect(
+        x: markInset,
+        y: markInset,
+        width: pixels - markInset * 2,
+        height: pixels - markInset * 2
+    )
     NSColor.black.setFill()
     grokPath(in: drawRect).fill()
 
