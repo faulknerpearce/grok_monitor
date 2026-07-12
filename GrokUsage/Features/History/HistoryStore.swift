@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import SwiftData
+import os
 
 @Model
 final class UsageSnapshotRecord {
@@ -10,9 +11,13 @@ final class UsageSnapshotRecord {
     var remainingPercent: Double
     var resetsAt: Date?
     var productsJSON: Data
-    var extraCredits: Double?
+    var extraCredits: Decimal?
     var accountEmail: String?
     var rawPayload: Data?
+
+    private static let encoder = JSONEncoder()
+    private static let decoder = JSONDecoder()
+    private static let logger = Logger(subsystem: "com.grokusage.app", category: "History")
 
     init(from snapshot: WeeklyUsageSnapshot) {
         self.id = snapshot.id
@@ -20,8 +25,13 @@ final class UsageSnapshotRecord {
         self.usedPercent = snapshot.usedPercent
         self.remainingPercent = snapshot.remainingPercent
         self.resetsAt = snapshot.resetsAt
-        self.productsJSON = (try? JSONEncoder().encode(snapshot.products)) ?? Data()
-        self.extraCredits = snapshot.extraCreditsBalance.map { NSDecimalNumber(decimal: $0).doubleValue }
+        if let data = try? Self.encoder.encode(snapshot.products) {
+            self.productsJSON = data
+        } else {
+            Self.logger.error("Failed to encode products for snapshot \(snapshot.id)")
+            self.productsJSON = Data()
+        }
+        self.extraCredits = snapshot.extraCreditsBalance
         self.accountEmail = snapshot.accountEmail
         self.rawPayload = snapshot.rawPayload
     }
@@ -31,14 +41,24 @@ final class UsageSnapshotRecord {
         usedPercent = snapshot.usedPercent
         remainingPercent = snapshot.remainingPercent
         resetsAt = snapshot.resetsAt
-        productsJSON = (try? JSONEncoder().encode(snapshot.products)) ?? Data()
-        extraCredits = snapshot.extraCreditsBalance.map { NSDecimalNumber(decimal: $0).doubleValue }
+        if let data = try? Self.encoder.encode(snapshot.products) {
+            productsJSON = data
+        } else {
+            Self.logger.error("Failed to encode products on apply for \(snapshot.id)")
+        }
+        extraCredits = snapshot.extraCreditsBalance
         accountEmail = snapshot.accountEmail
         rawPayload = snapshot.rawPayload
     }
 
     func toSnapshot() -> WeeklyUsageSnapshot {
-        let products = (try? JSONDecoder().decode([ProductUsage].self, from: productsJSON)) ?? []
+        let products: [ProductUsage]
+        if let decoded = try? Self.decoder.decode([ProductUsage].self, from: productsJSON) {
+            products = decoded
+        } else {
+            Self.logger.error("Failed to decode productsJSON for record \(self.id)")
+            products = []
+        }
         return WeeklyUsageSnapshot(
             id: id,
             fetchedAt: fetchedAt,
@@ -46,7 +66,7 @@ final class UsageSnapshotRecord {
             remainingPercent: remainingPercent,
             resetsAt: resetsAt,
             products: products,
-            extraCreditsBalance: extraCredits.map { Decimal($0) },
+            extraCreditsBalance: extraCredits,
             accountEmail: accountEmail,
             rawPayload: rawPayload
         )
@@ -55,6 +75,8 @@ final class UsageSnapshotRecord {
 
 @MainActor
 final class HistoryStore: ObservableObject {
+    private static let logger = Logger(subsystem: "com.grokusage.app", category: "HistoryStore")
+
     private var container: ModelContainer?
     private var context: ModelContext?
 
@@ -68,18 +90,15 @@ final class HistoryStore: ObservableObject {
             self.context = ModelContext(container)
             reload()
         } catch {
-            assertionFailure("SwiftData failed: \(error)")
+            Self.logger.error("SwiftData init failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
-    /// Keeps one end-of-day snapshot per calendar day (updates same-day row).
-    /// Skips only near-identical samples within 60s on the **same** day.
     func append(_ snapshot: WeeklyUsageSnapshot) {
         guard let context else { return }
         let cal = Calendar.current
         let dayStart = cal.startOfDay(for: snapshot.fetchedAt)
 
-        // Same-day near-duplicate within 60s — skip.
         if let last = recent.first,
            cal.isDate(last.fetchedAt, inSameDayAs: snapshot.fetchedAt),
            abs(last.usedPercent - snapshot.usedPercent) < 0.05,
@@ -88,16 +107,15 @@ final class HistoryStore: ObservableObject {
             return
         }
 
-        // Update existing record for this calendar day if present.
         if let existing = findRecord(on: dayStart, calendar: cal) {
             existing.apply(snapshot)
-            try? context.save()
+            save(context: context)
             reload()
             return
         }
 
         context.insert(UsageSnapshotRecord(from: snapshot))
-        try? context.save()
+        save(context: context)
         reload()
     }
 
@@ -120,7 +138,7 @@ final class HistoryStore: ObservableObject {
             try context.save()
             recent = []
         } catch {
-            // ignore
+            Self.logger.error("Clear failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -145,5 +163,13 @@ final class HistoryStore: ObservableObject {
         descriptor.fetchLimit = 200
         let records = (try? context.fetch(descriptor)) ?? []
         recent = records.map { $0.toSnapshot() }
+    }
+
+    private func save(context: ModelContext) {
+        do {
+            try context.save()
+        } catch {
+            Self.logger.error("SwiftData save failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 }
