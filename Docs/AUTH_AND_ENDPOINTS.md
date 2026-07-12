@@ -44,8 +44,9 @@ Observed CreditsConfig paths: `[1,1]` used%, `[1,4]` period start, `[1,5]` reset
 Until a real daily RPC is found, the dropdown chart:
 
 1. Prefers `WeeklyUsageSnapshot.dailySeries` when the parser finds day stamps
-2. Else uses **day-over-day deltas** from local SwiftData history
-3. Else attributes the tracked weekly used % to **today only** (scaled to a **`100/7`** daily cap) until day-to-day history exists — prior days stay empty rather than inventing a split
+2. Else uses **deltas between successive local sample days** (SwiftData end-of-day snapshots)
+3. On the **first tracked day**, attributes that day’s cumulative weekly used % to that day (scaled to a **`100/7`** daily cap) — days before tracking stay empty rather than inventing a split
+4. After a calendar day rollover, yesterday keeps its end-of-day total; today shows only new usage since then
 
 Use `UsageEndpointProbe.probeWithFieldDump(...)` when hunting a real daily API.
 

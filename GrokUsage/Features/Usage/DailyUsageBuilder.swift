@@ -1,12 +1,13 @@
 import Foundation
 
-/// Builds a Settings → Usage style “Daily use (% of weekly)” series.
+/// Builds a Settings → Usage style “Daily use” series.
 ///
 /// Priority:
 /// 1. Server daily series (when discovered / passed in)
-/// 2. Local snapshot deltas from successive polls
-/// 3. Attribute tracked weekly used % to today only until day-to-day history exists
-///    (never invent usage for prior days)
+/// 2. Local snapshot deltas between successive sample days
+/// 3. On the first tracked day (no earlier sample), attribute that day’s
+///    cumulative weekly used % to that day — never invent usage for days
+///    before tracking started
 ///
 /// Each day’s track in the UI is scaled to `100/7` of the weekly pool.
 enum DailyUsageBuilder {
@@ -99,53 +100,60 @@ enum DailyUsageBuilder {
         weekdayFormatter.dateFormat = "EEE"
 
         var days: [DailyUsageDay] = []
-        var hasRealDelta = false
+        var usedFirstDayAttribution = false
 
         for offset in 0..<7 {
             guard let dayStart = cal.date(byAdding: .day, value: offset, to: weekStart) else { continue }
             let isToday = cal.isDate(dayStart, inSameDayAs: now)
             let symbol = String(weekdayFormatter.string(from: dayStart).prefix(3))
 
-            let prevDay = cal.date(byAdding: .day, value: -1, to: dayStart)
-            let prevCumulative = prevDay.flatMap { cumulativeByDay[$0] }
+            // Prefer the latest prior *sample* day (not only calendar yesterday), so a
+            // missing poll day still yields a correct multi-day delta on the next sample.
+            let prevCumulative = sortedDays.last { $0 < dayStart }.flatMap { cumulativeByDay[$0] }
             let dayCumulative = cumulativeByDay[dayStart]
 
             var segments: [DailyUsageSegment] = []
             var isAfterReset = false
 
-            if let dayCumulative, let previous = prevCumulative {
-                hasRealDelta = true
-                if dayCumulative + 0.5 < previous {
-                    isAfterReset = true
-                    if previous > 0.05 {
-                        segments.append(
-                            DailyUsageSegment(
-                                productID: "before-reset",
-                                displayName: "Before reset",
-                                percentOfWeekly: previous,
-                                colorToken: .voice,
-                                isBeforeReset: true
+            if let dayCumulative {
+                let products = productsByDay[dayStart] ?? current?.products ?? []
+                let prevDayKey = sortedDays.last { $0 < dayStart }
+                let previousProducts = prevDayKey.flatMap { productsByDay[$0] } ?? []
+                if let previous = prevCumulative {
+                    if dayCumulative + 0.5 < previous {
+                        isAfterReset = true
+                        if previous > 0.05 {
+                            segments.append(
+                                DailyUsageSegment(
+                                    productID: "before-reset",
+                                    displayName: "Before reset",
+                                    percentOfWeekly: previous,
+                                    colorToken: .voice,
+                                    isBeforeReset: true
+                                )
                             )
+                        }
+                        if dayCumulative > 0.05 {
+                            segments.append(contentsOf: segmentsFromProducts(products))
+                        }
+                    } else {
+                        // Per-product deltas so only products that grew that day appear.
+                        let productSegments = productDeltaSegments(
+                            from: previousProducts,
+                            to: products
                         )
+                        let productSum = productSegments.reduce(0.0) { $0 + $1.percentOfWeekly }
+                        let totalDelta = max(0, dayCumulative - previous)
+                        if !productSegments.isEmpty, productSum > 0.05 {
+                            segments.append(contentsOf: productSegments)
+                        } else if totalDelta > 0.05 {
+                            segments.append(contentsOf: distribute(total: totalDelta, products: products))
+                        }
                     }
-                    if dayCumulative > 0.05 {
-                        segments.append(
-                            contentsOf: distribute(
-                                total: dayCumulative,
-                                products: productsByDay[dayStart] ?? current?.products ?? []
-                            )
-                        )
-                    }
-                } else {
-                    let delta = max(0, dayCumulative - previous)
-                    if delta > 0.05 {
-                        segments.append(
-                            contentsOf: distribute(
-                                total: delta,
-                                products: productsByDay[dayStart] ?? current?.products ?? []
-                            )
-                        )
-                    }
+                } else if dayCumulative > 0.05 {
+                    // First day we have history for — attribute cumulative used % here.
+                    segments.append(contentsOf: segmentsFromProducts(products, fallbackTotal: dayCumulative))
+                    usedFirstDayAttribution = true
                 }
             }
 
@@ -160,11 +168,11 @@ enum DailyUsageBuilder {
             )
         }
 
-        // No consecutive-day deltas yet: attribute tracked weekly used % to today only
-        // (we started tracking today — do not invent usage for prior days).
+        // Safety net: current used % but no in-week samples yet.
         let used = current?.usedPercent ?? samples.last?.usedPercent ?? 0
         let products = current?.products ?? samples.last?.products ?? []
-        if !hasRealDelta, used > 0.05, weekOffset == 0 {
+        let hasAnySegments = days.contains { !$0.segments.isEmpty }
+        if !hasAnySegments, used > 0.05, weekOffset == 0 {
             days = attributeToToday(
                 days: days,
                 usedPercent: used,
@@ -175,7 +183,9 @@ enum DailyUsageBuilder {
             return finalize(weekStart: weekStart, weekEnd: weekEnd, days: days, isEstimated: true)
         }
 
-        return finalize(weekStart: weekStart, weekEnd: weekEnd, days: days, isEstimated: false)
+        // Estimated only while we have a single first-day attribution (no prior sample).
+        let isEstimated = usedFirstDayAttribution && sortedDays.count <= 1
+        return finalize(weekStart: weekStart, weekEnd: weekEnd, days: days, isEstimated: isEstimated)
     }
 
     /// Preview week matching the grok.com Usage reference screenshot.
@@ -313,7 +323,7 @@ enum DailyUsageBuilder {
             return DailyUsageDay(
                 dayStart: day.dayStart,
                 weekdaySymbol: day.weekdaySymbol,
-                segments: distribute(total: usedPercent, products: products),
+                segments: segmentsFromProducts(products, fallbackTotal: usedPercent),
                 isToday: true,
                 isAfterReset: false
             )
@@ -344,7 +354,7 @@ enum DailyUsageBuilder {
             let snap = byDay[dayStart]
             let segments: [DailyUsageSegment]
             if let snap, snap.percentOfWeekly > 0.05 {
-                segments = distribute(total: snap.percentOfWeekly, products: snap.products)
+                segments = segmentsFromProducts(snap.products, fallbackTotal: snap.percentOfWeekly)
             } else {
                 segments = []
             }
@@ -411,6 +421,76 @@ enum DailyUsageBuilder {
         return calendar.date(byAdding: .day, value: -daysFromStart, to: day) ?? day
     }
 
+    /// Absolute product slices — only products with usage above zero.
+    private static func segmentsFromProducts(
+        _ products: [ProductUsage],
+        fallbackTotal: Double? = nil
+    ) -> [DailyUsageSegment] {
+        let visible = products.filter { $0.percentOfPool > 0.05 }
+        if !visible.isEmpty {
+            return ProductCatalog.sortForDisplay(visible).map { product in
+                DailyUsageSegment(
+                    productID: product.id,
+                    displayName: product.displayName,
+                    percentOfWeekly: product.percentOfPool,
+                    colorToken: product.colorToken,
+                    isBeforeReset: false
+                )
+            }
+        }
+        guard let total = fallbackTotal, total > 0.05 else { return [] }
+        return [
+            DailyUsageSegment(
+                productID: "build",
+                displayName: ProductCatalog.displayName(for: "build"),
+                percentOfWeekly: total,
+                colorToken: .build,
+                isBeforeReset: false
+            )
+        ]
+    }
+
+    /// Day-over-day growth per product — omits products that did not increase.
+    private static func productDeltaSegments(
+        from previous: [ProductUsage],
+        to current: [ProductUsage]
+    ) -> [DailyUsageSegment] {
+        var previousByID: [String: Double] = [:]
+        for product in previous {
+            previousByID[product.id.lowercased()] = product.percentOfPool
+        }
+
+        var deltas: [ProductUsage] = []
+        var seen = Set<String>()
+        for product in current {
+            let key = product.id.lowercased()
+            seen.insert(key)
+            let delta = max(0, product.percentOfPool - (previousByID[key] ?? 0))
+            guard delta > 0.05 else { continue }
+            deltas.append(
+                ProductUsage(
+                    id: product.id,
+                    displayName: product.displayName,
+                    percentOfPool: delta,
+                    colorToken: product.colorToken
+                )
+            )
+        }
+        // Products that disappeared from the current snapshot contribute nothing.
+        _ = seen
+
+        return ProductCatalog.sortForDisplay(deltas).map { product in
+            DailyUsageSegment(
+                productID: product.id,
+                displayName: product.displayName,
+                percentOfWeekly: product.percentOfPool,
+                colorToken: product.colorToken,
+                isBeforeReset: false
+            )
+        }
+    }
+
+    /// Proportional split of a total when product-level deltas are unavailable.
     private static func distribute(total: Double, products: [ProductUsage]) -> [DailyUsageSegment] {
         let visible = products.filter { $0.percentOfPool > 0.05 }
         let sum = visible.reduce(0.0) { $0 + $1.percentOfPool }
@@ -428,12 +508,14 @@ enum DailyUsageBuilder {
             ]
         }
 
-        return ProductCatalog.sortForDisplay(visible).map { product in
+        return ProductCatalog.sortForDisplay(visible).compactMap { product in
             let share = product.percentOfPool / sum
+            let percent = total * share
+            guard percent > 0.05 else { return nil }
             return DailyUsageSegment(
                 productID: product.id,
                 displayName: product.displayName,
-                percentOfWeekly: total * share,
+                percentOfWeekly: percent,
                 colorToken: product.colorToken,
                 isBeforeReset: false
             )

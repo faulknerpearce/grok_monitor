@@ -92,20 +92,22 @@ final class UsageParsingTests: XCTestCase {
             return XCTFail("date math")
         }
 
-        let products = [
-            ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 20),
-            ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 10)
-        ]
         let history = [
             WeeklyUsageSnapshot(
                 fetchedAt: yesterday.addingTimeInterval(3600 * 12),
                 usedPercent: 10,
-                products: products
+                products: [
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 7),
+                    ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 3)
+                ]
             ),
             WeeklyUsageSnapshot(
                 fetchedAt: today.addingTimeInterval(3600 * 10),
                 usedPercent: 30,
-                products: products
+                products: [
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 20),
+                    ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 10)
+                ]
             )
         ]
         let week = DailyUsageBuilder.week(
@@ -117,10 +119,101 @@ final class UsageParsingTests: XCTestCase {
         )
         XCTAssertEqual(week.days.count, 7)
         XCTAssertTrue(week.hasDailyData)
+        XCTAssertFalse(week.isEstimated)
+
+        let yesterdayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: yesterday) }
         let todayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: today) }
-        XCTAssertNotNil(todayDay)
-        // Today should reflect ~20% delta (30 - 10), split across products.
+        // First sample day keeps its cumulative total; today is the day-over-day delta.
+        XCTAssertEqual(yesterdayDay?.totalPercent ?? 0, 10, accuracy: 0.2)
         XCTAssertEqual(todayDay?.totalPercent ?? 0, 20, accuracy: 0.2)
+        XCTAssertEqual(todayDay?.segments.count, 2)
+    }
+
+    func testDailyUsageOnlyShowsProductsThatGrew() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.firstWeekday = 2
+        let now = ISO8601DateFormatter().date(from: "2026-07-12T12:00:00Z")!
+        let today = cal.startOfDay(for: now)
+        guard let yesterday = cal.date(byAdding: .day, value: -1, to: today) else {
+            return XCTFail("date math")
+        }
+
+        let history = [
+            WeeklyUsageSnapshot(
+                fetchedAt: yesterday.addingTimeInterval(3600 * 18),
+                usedPercent: 39,
+                products: [
+                    ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 23),
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 13),
+                    ProductUsage(id: "api", displayName: "API", percentOfPool: 3)
+                ]
+            ),
+            WeeklyUsageSnapshot(
+                fetchedAt: today.addingTimeInterval(3600 * 10),
+                usedPercent: 42,
+                products: [
+                    ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 26),
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 13),
+                    ProductUsage(id: "api", displayName: "API", percentOfPool: 3)
+                ]
+            )
+        ]
+        let week = DailyUsageBuilder.week(
+            history: history,
+            current: history.last,
+            weekOffset: 0,
+            calendar: cal,
+            now: now
+        )
+
+        let todayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: today) }
+        XCTAssertEqual(todayDay?.totalPercent ?? 0, 3, accuracy: 0.2)
+        XCTAssertEqual(todayDay?.segments.count, 1)
+        XCTAssertEqual(todayDay?.segments.first?.productID, "chat")
+        // Legend for the week still includes yesterday’s products, but today’s bar is chat-only.
+        XCTAssertTrue(todayDay?.segments.allSatisfy { $0.percentOfWeekly > 0 } ?? false)
+    }
+
+    func testDailyUsageShowsYesterdayAfterDayRollover() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.firstWeekday = 2
+        // Fixed Sunday so billing week (Mon–Sun) and calendar week align without resetsAt.
+        let now = ISO8601DateFormatter().date(from: "2026-07-12T10:00:00Z")!
+        let today = cal.startOfDay(for: now)
+        guard let yesterday = cal.date(byAdding: .day, value: -1, to: today) else {
+            return XCTFail("date math")
+        }
+
+        let products = [
+            ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 23),
+            ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 16)
+        ]
+        // App tracked all day Saturday; Sunday morning has not used more yet.
+        let history = [
+            WeeklyUsageSnapshot(
+                fetchedAt: yesterday.addingTimeInterval(3600 * 20),
+                usedPercent: 39,
+                products: products
+            ),
+            WeeklyUsageSnapshot(
+                fetchedAt: today.addingTimeInterval(3600 * 9),
+                usedPercent: 39,
+                products: products
+            )
+        ]
+        let week = DailyUsageBuilder.week(
+            history: history,
+            current: history.last,
+            weekOffset: 0,
+            calendar: cal,
+            now: now
+        )
+
+        let yesterdayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: yesterday) }
+        let todayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: today) }
+        XCTAssertEqual(yesterdayDay?.totalPercent ?? 0, 39, accuracy: 0.2)
+        XCTAssertEqual(todayDay?.totalPercent ?? 0, 0, accuracy: 0.2)
+        XCTAssertFalse(week.isEstimated)
     }
 
     func testDailyUsageAttributesToTodayWhenNoHistory() {

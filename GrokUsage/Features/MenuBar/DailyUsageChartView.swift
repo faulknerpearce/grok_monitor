@@ -50,7 +50,7 @@ struct DailyUsageChartView: View {
 
     private func dayColumn(_ day: DailyUsageDay) -> some View {
         VStack(spacing: 5) {
-            Text(day.totalPercent > 0.5 ? "\(Int(day.totalPercent.rounded()))" : " ")
+            Text(day.totalPercent > 0.5 ? "\(Int(day.totalPercent.rounded()))%" : " ")
                 .font(.system(size: 10, weight: .medium))
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
@@ -145,16 +145,18 @@ struct DailyUsageChartView: View {
         DailyUsageBuilder.fillFraction(forDayUsage: percent)
     }
 
-    /// Bottom → top stack order matching grok.com Usage.
+    /// Bottom → top stack order matching grok.com Usage. Skip zero-height slices.
     private func stackedSegments(for day: DailyUsageDay) -> [DailyUsageSegment] {
         let order = ["before-reset", "api", "build", "chat", "imagine", "voice"]
-        return day.segments.sorted { a, b in
-            let aKey = a.isBeforeReset ? "before-reset" : a.productID.lowercased()
-            let bKey = b.isBeforeReset ? "before-reset" : b.productID.lowercased()
-            let ai = order.firstIndex(of: aKey) ?? 99
-            let bi = order.firstIndex(of: bKey) ?? 99
-            return ai < bi
-        }
+        return day.segments
+            .filter { $0.percentOfWeekly > 0.05 }
+            .sorted { a, b in
+                let aKey = a.isBeforeReset ? "before-reset" : a.productID.lowercased()
+                let bKey = b.isBeforeReset ? "before-reset" : b.productID.lowercased()
+                let ai = order.firstIndex(of: aKey) ?? 99
+                let bi = order.firstIndex(of: bKey) ?? 99
+                return ai < bi
+            }
     }
 
     private func segmentColor(_ segment: DailyUsageSegment) -> Color {
