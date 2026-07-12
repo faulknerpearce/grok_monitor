@@ -82,6 +82,12 @@ After adding source files, regenerate the Xcode project if needed:
 python3 Scripts/generate_xcodeproj.py
 ```
 
+Regenerate the black Grok app icon set (same approach as Coin Monitor):
+
+```bash
+swift Scripts/generate_icon.swift GrokMonitor/Resources/Assets.xcassets/AppIcon.appiconset
+```
+
 ## Testing
 
 Full Xcode test suite:
@@ -115,7 +121,7 @@ GrokMonitor/
     Alerts/      Threshold notifications
   Resources/     Info.plist, entitlements, assets
 Docs/            Architecture, auth/endpoints, notarization
-Scripts/         Xcode project generator, tests, notarize
+Scripts/         Xcode project generator, icon generator, tests, notarize
 GrokMonitorTests/  XCTest suite
 ```
 

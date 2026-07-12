@@ -20,6 +20,12 @@ After adding or removing source files, regenerate the Xcode project:
 python3 Scripts/generate_xcodeproj.py
 ```
 
+To regenerate the black Grok app icon:
+
+```bash
+swift Scripts/generate_icon.swift GrokMonitor/Resources/Assets.xcassets/AppIcon.appiconset
+```
+
 ## Before you open a PR
 
 - Keep changes focused on one concern.
