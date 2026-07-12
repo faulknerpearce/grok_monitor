@@ -17,7 +17,7 @@ struct DailyUsageChartView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Daily use (% of weekly)")
+            Text("Daily use")
                 .font(.system(size: 12, weight: .semibold))
 
             HStack(spacing: 8) {
@@ -44,16 +44,6 @@ struct DailyUsageChartView: View {
 
             if !week.legendProducts.isEmpty {
                 legend
-            }
-
-            if week.isEstimated {
-                Text("Showing today’s tracked total — prior days fill in as history builds.")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
-            } else if !week.hasDailyData {
-                Text("Daily breakdown builds as Grok Usage polls each day.")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.tertiary)
             }
         }
     }
@@ -99,31 +89,33 @@ struct DailyUsageChartView: View {
     }
 
     private var legend: some View {
-        let items = week.legendProducts
-        return VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 16) {
-                ForEach(items.prefix(2)) { item in
-                    legendItem(item)
-                }
+        HStack(alignment: .center, spacing: 12) {
+            ForEach(week.legendProducts) { item in
+                legendItem(item)
             }
-            if items.count > 2 {
-                HStack(spacing: 16) {
-                    ForEach(Array(items.dropFirst(2).prefix(2))) { item in
-                        legendItem(item)
-                    }
-                }
-            }
+            Spacer(minLength: 0)
         }
     }
 
     private func legendItem(_ item: DailyUsageLegendItem) -> some View {
-        HStack(spacing: 5) {
+        HStack(alignment: .center, spacing: 5) {
             Circle()
                 .fill(legendColor(for: item))
                 .frame(width: 7, height: 7)
-            Text(item.displayName)
+            Text(legendLabel(for: item))
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+    }
+
+    /// Short labels so Chat / Build / API fit on one row without wrapping.
+    private func legendLabel(for item: DailyUsageLegendItem) -> String {
+        switch item.id.lowercased() {
+        case "build": return "Build"
+        case "before-reset": return "Before reset"
+        default: return item.displayName
         }
     }
 
