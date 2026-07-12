@@ -14,7 +14,7 @@ enum MenuBarStatusRenderer {
         let height: CGFloat = 22
         let font = NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: .medium)
         let smallFont = NSFont.systemFont(ofSize: 12.5, weight: .medium)
-        let textColor = NSColor.black
+        let textColor = NSColor.labelColor
         let iconSize: CGFloat = 16
         let barWidth: CGFloat = 48
         let barHeight: CGFloat = 8
@@ -68,7 +68,7 @@ enum MenuBarStatusRenderer {
 
         if showBar {
             let barRect = NSRect(x: x, y: midY - barHeight / 2, width: barWidth, height: barHeight)
-            NSColor.black.withAlphaComponent(0.14).setFill()
+            NSColor.labelColor.withAlphaComponent(0.14).setFill()
             NSBezierPath(roundedRect: barRect, xRadius: barHeight / 2, yRadius: barHeight / 2).fill()
 
             let segments = products.isEmpty
@@ -125,7 +125,7 @@ enum MenuBarStatusRenderer {
     private static func drawGrokIcon(in rect: NSRect) {
         if let icon = grokIconTemplate {
             NSGraphicsContext.saveGraphicsState()
-            NSColor.black.set()
+            NSColor.labelColor.set()
             icon.size = rect.size
             icon.draw(
                 in: rect,
@@ -184,7 +184,7 @@ enum MenuBarStatusRenderer {
         path.line(to: p(5.409, 5.217))
         path.close()
 
-        NSColor.black.setFill()
+        NSColor.labelColor.setFill()
         path.fill()
     }
 
