@@ -71,7 +71,7 @@ struct SignInView: View {
         }
         .frame(minWidth: 880, minHeight: 640)
         .onAppear {
-            NSApp.activate(ignoringOtherApps: true)
+            NSApp.activate()
         }
     }
 
