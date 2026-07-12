@@ -30,7 +30,12 @@ struct GrokUsageApp: App {
                 Task { await model.poller.refreshNow() }
                 AppDelegate.hideDockIfNoWindows()
             }
-            .background(SignInWindowLifecycle())
+            .background(Color.clear
+                .frame(width: 0, height: 0)
+                .onDisappear {
+                    AppDelegate.hideDockIfNoWindows()
+                }
+            )
         }
         .defaultSize(width: 920, height: 700)
         .windowResizability(.contentMinSize)
@@ -112,16 +117,6 @@ private struct PreferencesRoot: View {
                 openWindow(id: "signin")
             }
         )
-    }
-}
-
-private struct SignInWindowLifecycle: View {
-    var body: some View {
-        Color.clear
-            .frame(width: 0, height: 0)
-            .onDisappear {
-                AppDelegate.hideDockIfNoWindows()
-            }
     }
 }
 

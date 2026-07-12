@@ -28,6 +28,7 @@
 		A3CA2A71ED8C319F6539EDF4 /* UsagePoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168327A6497EA566CE8843E6 /* UsagePoller.swift */; };
 		D85192CB6A7299A82856C347 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A74B813EA0E8CCA67E4B9DA3 /* Assets.xcassets */; };
 		9F59AB7BE54BF17E93905EF5 /* usage_fixture.json in Resources */ = {isa = PBXBuildFile; fileRef = 4FFAE8E1CCE97403393395FC /* usage_fixture.json */; };
+		C2AF601047081DD3EC5AD25F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C8BB6ACDE35B470AA0EC0CDD /* PrivacyInfo.xcprivacy */; };
 		0747DFDB313CB497F6F454AA /* UsageParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D2AE69E26392BE53FCFE589 /* UsageParsingTests.swift */; };
 		96658117B5558839867E62DD /* Grok Usage.app in Frameworks */ = {isa = PBXBuildFile; fileRef = CFA09E70BEACBD2DBB601660 /* Grok Usage.app */; };
 /* End PBXBuildFile section */
@@ -69,6 +70,7 @@
 		4FFAE8E1CCE97403393395FC /* usage_fixture.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = GrokUsage/Fixtures/usage_fixture.json; sourceTree = SOURCE_ROOT; };
 		D15BC6777BDB5245444A80E6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = GrokUsage/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
 		F4D6BE107537CE7810555A91 /* GrokUsage.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GrokUsage/Resources/GrokUsage.entitlements; sourceTree = SOURCE_ROOT; };
+		C8BB6ACDE35B470AA0EC0CDD /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = GrokUsage/Resources/PrivacyInfo.xcprivacy; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 /* Begin PBXGroup section */
 		C30A832EE505BE1C42421BE8 = {
@@ -125,6 +127,7 @@
 				4FFAE8E1CCE97403393395FC /* usage_fixture.json */,
 				D15BC6777BDB5245444A80E6 /* Info.plist */,
 				F4D6BE107537CE7810555A91 /* GrokUsage.entitlements */,
+				C8BB6ACDE35B470AA0EC0CDD /* PrivacyInfo.xcprivacy */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -201,6 +204,7 @@
 			files = (
 				D85192CB6A7299A82856C347 /* Assets.xcassets in Resources */,
 				9F59AB7BE54BF17E93905EF5 /* usage_fixture.json in Resources */,
+				C2AF601047081DD3EC5AD25F /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -309,6 +313,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.grokusage.app;
 				PRODUCT_MODULE_NAME = GrokUsage;
 				PRODUCT_NAME = "Grok Usage";
+				PRIVACY_MANIFEST_FILE = GrokUsage/Resources/PrivacyInfo.xcprivacy;
 				SWIFT_VERSION = 5.10;
 			};
 			name = Debug;
@@ -330,6 +335,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.grokusage.app;
 				PRODUCT_MODULE_NAME = GrokUsage;
 				PRODUCT_NAME = "Grok Usage";
+				PRIVACY_MANIFEST_FILE = GrokUsage/Resources/PrivacyInfo.xcprivacy;
 				SWIFT_VERSION = 5.10;
 			};
 			name = Release;

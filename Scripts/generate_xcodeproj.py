@@ -23,6 +23,7 @@ asset = Path("GrokUsage/Resources/Assets.xcassets")
 fixture = Path("GrokUsage/Fixtures/usage_fixture.json")
 info = Path("GrokUsage/Resources/Info.plist")
 ent = Path("GrokUsage/Resources/GrokUsage.entitlements")
+privacy = Path("GrokUsage/Resources/PrivacyInfo.xcprivacy")
 
 ids = {k: uid(f"id:{k}") for k in [
     "project", "main", "products", "src_group", "tests_group", "res_group",
@@ -33,11 +34,12 @@ ids = {k: uid(f"id:{k}") for k in [
     "test_sources", "test_frameworks", "dep", "proxy", "app_in_tests",
 ]}
 
-file_refs = {str(p): uid(f"ref:{p}") for p in [*swift_files, *test_files, asset, fixture, info, ent]}
+file_refs = {str(p): uid(f"ref:{p}") for p in [*swift_files, *test_files, asset, fixture, info, ent, privacy]}
 src_builds = [(uid(f"src_build:{p}"), file_refs[str(p)], p.name) for p in swift_files]
 res_builds = [
     (uid(f"res_build:{asset}"), file_refs[str(asset)], "Assets.xcassets"),
     (uid(f"res_build:{fixture}"), file_refs[str(fixture)], "usage_fixture.json"),
+    (uid(f"res_build:{privacy}"), file_refs[str(privacy)], "PrivacyInfo.xcprivacy"),
 ]
 test_builds = [(uid(f"test_build:{p}"), file_refs[str(p)], p.name) for p in test_files]
 
@@ -82,6 +84,7 @@ a(f'\t\t{file_refs[str(asset)]} /* Assets.xcassets */ = {{isa = PBXFileReference
 a(f'\t\t{file_refs[str(fixture)]} /* usage_fixture.json */ = {{isa = PBXFileReference; lastKnownFileType = text.json; path = {fixture.as_posix()}; sourceTree = SOURCE_ROOT; }};')
 a(f'\t\t{file_refs[str(info)]} /* Info.plist */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = {info.as_posix()}; sourceTree = SOURCE_ROOT; }};')
 a(f'\t\t{file_refs[str(ent)]} /* GrokUsage.entitlements */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = {ent.as_posix()}; sourceTree = SOURCE_ROOT; }};')
+a(f'\t\t{file_refs[str(privacy)]} /* PrivacyInfo.xcprivacy */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = {privacy.as_posix()}; sourceTree = SOURCE_ROOT; }};')
 a("/* End PBXFileReference section */")
 
 a("/* Begin PBXGroup section */")
@@ -120,6 +123,7 @@ a(f"\t\t\t\t{file_refs[str(asset)]} /* Assets.xcassets */,")
 a(f"\t\t\t\t{file_refs[str(fixture)]} /* usage_fixture.json */,")
 a(f"\t\t\t\t{file_refs[str(info)]} /* Info.plist */,")
 a(f"\t\t\t\t{file_refs[str(ent)]} /* GrokUsage.entitlements */,")
+a(f"\t\t\t\t{file_refs[str(privacy)]} /* PrivacyInfo.xcprivacy */,")
 a("\t\t\t);")
 a("\t\t\tname = Resources;")
 a('\t\t\tsourceTree = "<group>";')
@@ -284,6 +288,7 @@ def cfg(cid: str, name: str, kind: str) -> None:
         a("\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.grokusage.app;")
         a("\t\t\t\tPRODUCT_MODULE_NAME = GrokUsage;")
         a('\t\t\t\tPRODUCT_NAME = "Grok Usage";')
+        a("\t\t\t\tPRIVACY_MANIFEST_FILE = GrokUsage/Resources/PrivacyInfo.xcprivacy;")
         a(f"\t\t\t\tSWIFT_VERSION = {SWIFT_VERSION};")
     else:
         a('\t\t\t\tBUNDLE_LOADER = "$(TEST_HOST)";')
