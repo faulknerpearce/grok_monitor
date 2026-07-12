@@ -2,9 +2,12 @@
 
 A native macOS menu bar app for tracking your **Weekly SuperGrok** usage pool in real time.
 
-![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue)
-![Swift](https://img.shields.io/badge/Swift-5.10-orange)
-![License](https://img.shields.io/badge/license-private-lightgrey)
+[![Platform](https://img.shields.io/badge/platform-macOS%2014%2B-blue)](https://github.com/faulknerpearce/grok_monitor)
+[![Swift](https://img.shields.io/badge/Swift-5.10-orange)](https://www.swift.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://img.shields.io/badge/tests-xcodebuild-lightgrey)](#testing)
+
+> **Unofficial.** Grok Monitor is not affiliated with, endorsed by, or supported by xAI. It uses authenticated grok.com surfaces that may change without notice.
 
 ## Overview
 
@@ -32,10 +35,10 @@ Grok Monitor sits in the macOS menu bar and shows how much of your SuperGrok wee
 
 ## Getting started
 
-### 1. Open the project
+### 1. Clone and open
 
 ```bash
-git clone git@github.com:faulknerpearce/grok_monitor.git
+git clone https://github.com/faulknerpearce/grok_monitor.git
 cd grok_monitor
 open GrokMonitor.xcodeproj
 ```
@@ -48,8 +51,6 @@ Select the **GrokMonitor** scheme → **My Mac** → Run (⌘R). The app appears
 2. Complete login on `accounts.x.ai` / grok.com in the sign-in window
 3. If capture does not happen automatically, click **I'm signed in — Capture Session**
 4. Usage appears after the first successful refresh
-
-> **Rename note:** This project was previously `grok_usage` / `Grok Usage` (`com.grokusage.app`). The bundle ID is now `com.grokmonitor.app`. Prefer signing in again after upgrading; the app will best-effort migrate Application Support auth/history when the old files are readable.
 
 ## Build from the command line
 
@@ -133,6 +134,8 @@ GrokMonitorTests/  XCTest suite
 | [Docs/ARCHITECTURE.md](Docs/ARCHITECTURE.md) | Module map and data flow |
 | [Docs/AUTH_AND_ENDPOINTS.md](Docs/AUTH_AND_ENDPOINTS.md) | Auth model, endpoints, daily-use limitations |
 | [Docs/NOTARIZATION.md](Docs/NOTARIZATION.md) | Developer ID signing and notarization |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | How to develop and open PRs |
+| [SECURITY.md](SECURITY.md) | How to report vulnerabilities |
 
 ## Distribution
 
@@ -144,11 +147,10 @@ Grok’s billing API exposes **cumulative weekly** usage, not a public per-day s
 
 ## Contributing
 
-1. Create a feature branch from `master`
-2. Make focused commits with clear messages
-3. Run `./Scripts/run_core_tests.sh` (and Xcode tests when UI changes)
-4. Open a pull request
+See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and pull requests are welcome.
+
+Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
-Private repository. All rights reserved unless otherwise stated by the owner.
+This project is licensed under the [MIT License](LICENSE).
