@@ -1,0 +1,104 @@
+import Foundation
+import ServiceManagement
+import SwiftUI
+
+@MainActor
+final class AppSettings: ObservableObject {
+    private let defaults = UserDefaults.standard
+
+    @Published var showCategoriesInMenuBar: Bool {
+        didSet {
+            guard showCategoriesInMenuBar != oldValue else { return }
+            defaults.set(showCategoriesInMenuBar, forKey: Keys.showCategories)
+            objectWillChange.send()
+        }
+    }
+
+    @Published var showBarGraphInMenuBar: Bool {
+        didSet {
+            guard showBarGraphInMenuBar != oldValue else { return }
+            defaults.set(showBarGraphInMenuBar, forKey: Keys.showBar)
+            objectWillChange.send()
+        }
+    }
+
+    @Published var activePollSeconds: Int {
+        didSet { defaults.set(activePollSeconds, forKey: Keys.activePoll) }
+    }
+
+    @Published var idlePollSeconds: Int {
+        didSet { defaults.set(idlePollSeconds, forKey: Keys.idlePoll) }
+    }
+
+    @Published var thresholdEnabled: Bool {
+        didSet { defaults.set(thresholdEnabled, forKey: Keys.thresholdEnabled) }
+    }
+
+    @Published var thresholdPercent: Double {
+        didSet { defaults.set(thresholdPercent, forKey: Keys.thresholdPercent) }
+    }
+
+    @Published var visibleProductIDs: Set<String> {
+        didSet {
+            defaults.set(Array(visibleProductIDs), forKey: Keys.visibleProducts)
+        }
+    }
+
+    @Published var launchAtLogin: Bool {
+        didSet {
+            guard !isRevertingLaunchAtLogin, launchAtLogin != oldValue else { return }
+            updateLaunchAtLogin()
+        }
+    }
+
+    /// Guards against recursive `didSet` when registration fails and we revert.
+    private var isRevertingLaunchAtLogin = false
+
+    init() {
+        showCategoriesInMenuBar = defaults.object(forKey: Keys.showCategories) as? Bool ?? true
+        showBarGraphInMenuBar = defaults.object(forKey: Keys.showBar) as? Bool ?? true
+        activePollSeconds = defaults.object(forKey: Keys.activePoll) as? Int ?? 60
+        idlePollSeconds = defaults.object(forKey: Keys.idlePoll) as? Int ?? 300
+        thresholdEnabled = defaults.object(forKey: Keys.thresholdEnabled) as? Bool ?? true
+        thresholdPercent = defaults.object(forKey: Keys.thresholdPercent) as? Double ?? 80
+        let products = defaults.stringArray(forKey: Keys.visibleProducts)
+            ?? ProductCatalog.knownIDs
+        visibleProductIDs = Set(products)
+        launchAtLogin = SMAppService.mainApp.status == .enabled
+    }
+
+    func filteredProducts(from snapshot: WeeklyUsageSnapshot) -> [ProductUsage] {
+        ProductCatalog.sortForDisplay(
+            snapshot.products.filter {
+                visibleProductIDs.contains($0.id.lowercased()) && $0.percentOfPool > 0.05
+            }
+        )
+    }
+
+    private func updateLaunchAtLogin() {
+        do {
+            if launchAtLogin {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            // Revert UI if registration fails (e.g. unsigned debug builds).
+            let actual = SMAppService.mainApp.status == .enabled
+            guard launchAtLogin != actual else { return }
+            isRevertingLaunchAtLogin = true
+            launchAtLogin = actual
+            isRevertingLaunchAtLogin = false
+        }
+    }
+
+    private enum Keys {
+        static let showCategories = "showCategoriesInMenuBar"
+        static let showBar = "showBarGraphInMenuBar"
+        static let activePoll = "activePollSeconds"
+        static let idlePoll = "idlePollSeconds"
+        static let thresholdEnabled = "thresholdEnabled"
+        static let thresholdPercent = "thresholdPercent"
+        static let visibleProducts = "visibleProductIDs"
+    }
+}

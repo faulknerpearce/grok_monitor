@@ -1,0 +1,12 @@
+{
+  "usedPercent": 35,
+  "remainingPercent": 65,
+  "resetsAt": "2026-07-16T20:25:00Z",
+  "products": [
+    { "id": "build", "displayName": "Grok Build", "percentOfPool": 25 },
+    { "id": "api", "displayName": "API", "percentOfPool": 9 },
+    { "id": "chat", "displayName": "Chat", "percentOfPool": 1 }
+  ],
+  "extraCredits": 0,
+  "email": "user@example.com"
+}

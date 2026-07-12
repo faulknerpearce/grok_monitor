@@ -1,0 +1,56 @@
+name: GrokUsage
+options:
+  bundleIdPrefix: com.grokusage
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_HARDENED_RUNTIME: YES
+    CODE_SIGN_STYLE: Automatic
+targets:
+  GrokUsage:
+    type: application
+    platform: macOS
+    sources:
+      - path: GrokUsage
+        excludes:
+          - "**/.DS_Store"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.grokusage.app
+        PRODUCT_NAME: Grok Usage
+        INFOPLIST_FILE: GrokUsage/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: GrokUsage/Resources/GrokUsage.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
+        COMBINE_HIDPI_IMAGES: YES
+        GENERATE_INFOPLIST_FILE: NO
+    entitlements:
+      path: GrokUsage/Resources/GrokUsage.entitlements
+  GrokUsageTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: GrokUsageTests
+    dependencies:
+      - target: GrokUsage
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.grokusage.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Grok Usage.app/Contents/MacOS/Grok Usage"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+schemes:
+  GrokUsage:
+    build:
+      targets:
+        GrokUsage: all
+        GrokUsageTests: [test]
+    test:
+      targets:
+        - GrokUsageTests
+    run:
+      config: Debug
