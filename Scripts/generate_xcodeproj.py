@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate a reliable GrokUsage.xcodeproj with explicit file paths."""
 from __future__ import annotations
-import uuid
+import hashlib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -10,9 +10,11 @@ TESTS = ROOT / "GrokUsageTests"
 PROJ = ROOT / "GrokUsage.xcodeproj"
 PROJ.mkdir(exist_ok=True)
 
+SWIFT_VERSION = "5.10"
 
-def uid() -> str:
-    return uuid.uuid4().hex[:24].upper()
+
+def uid(seed: str) -> str:
+    return hashlib.md5(seed.encode()).hexdigest()[:24].upper()
 
 
 swift_files = sorted(p.relative_to(ROOT) for p in SRC.rglob("*.swift"))
@@ -22,7 +24,7 @@ fixture = Path("GrokUsage/Fixtures/usage_fixture.json")
 info = Path("GrokUsage/Resources/Info.plist")
 ent = Path("GrokUsage/Resources/GrokUsage.entitlements")
 
-ids = {k: uid() for k in [
+ids = {k: uid(f"id:{k}") for k in [
     "project", "main", "products", "src_group", "tests_group", "res_group",
     "sources", "resources", "frameworks",
     "app_target", "test_target", "app_product", "test_product",
@@ -31,13 +33,13 @@ ids = {k: uid() for k in [
     "test_sources", "test_frameworks", "dep", "proxy", "app_in_tests",
 ]}
 
-file_refs = {str(p): uid() for p in [*swift_files, *test_files, asset, fixture, info, ent]}
-src_builds = [(uid(), file_refs[str(p)], p.name) for p in swift_files]
+file_refs = {str(p): uid(f"ref:{p}") for p in [*swift_files, *test_files, asset, fixture, info, ent]}
+src_builds = [(uid(f"src_build:{p}"), file_refs[str(p)], p.name) for p in swift_files]
 res_builds = [
-    (uid(), file_refs[str(asset)], "Assets.xcassets"),
-    (uid(), file_refs[str(fixture)], "usage_fixture.json"),
+    (uid(f"res_build:{asset}"), file_refs[str(asset)], "Assets.xcassets"),
+    (uid(f"res_build:{fixture}"), file_refs[str(fixture)], "usage_fixture.json"),
 ]
-test_builds = [(uid(), file_refs[str(p)], p.name) for p in test_files]
+test_builds = [(uid(f"test_build:{p}"), file_refs[str(p)], p.name) for p in test_files]
 
 out: list[str] = []
 a = out.append
@@ -261,7 +263,7 @@ def cfg(cid: str, name: str, kind: str) -> None:
         a("\t\t\t\tCLANG_ENABLE_MODULES = YES;")
         a("\t\t\t\tMACOSX_DEPLOYMENT_TARGET = 14.0;")
         a("\t\t\t\tSDKROOT = macosx;")
-        a("\t\t\t\tSWIFT_VERSION = 5.0;")
+        a(f"\t\t\t\tSWIFT_VERSION = {SWIFT_VERSION};")
         if name == "Debug":
             a("\t\t\t\tONLY_ACTIVE_ARCH = YES;")
             a('\t\t\t\tSWIFT_OPTIMIZATION_LEVEL = "-Onone";')
@@ -272,7 +274,8 @@ def cfg(cid: str, name: str, kind: str) -> None:
         a("\t\t\t\tCOMBINE_HIDPI_IMAGES = YES;")
         a("\t\t\t\tCURRENT_PROJECT_VERSION = 1;")
         a("\t\t\t\tENABLE_HARDENED_RUNTIME = YES;")
-        a("\t\t\t\tENABLE_TESTABILITY = YES;")
+        if name == "Debug":
+            a("\t\t\t\tENABLE_TESTABILITY = YES;")
         a("\t\t\t\tGENERATE_INFOPLIST_FILE = NO;")
         a("\t\t\t\tINFOPLIST_FILE = GrokUsage/Resources/Info.plist;")
         a('\t\t\t\tLD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../Frameworks");')
@@ -281,7 +284,7 @@ def cfg(cid: str, name: str, kind: str) -> None:
         a("\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.grokusage.app;")
         a("\t\t\t\tPRODUCT_MODULE_NAME = GrokUsage;")
         a('\t\t\t\tPRODUCT_NAME = "Grok Usage";')
-        a("\t\t\t\tSWIFT_VERSION = 5.0;")
+        a(f"\t\t\t\tSWIFT_VERSION = {SWIFT_VERSION};")
     else:
         a('\t\t\t\tBUNDLE_LOADER = "$(TEST_HOST)";')
         a("\t\t\t\tCODE_SIGN_STYLE = Automatic;")
@@ -289,7 +292,7 @@ def cfg(cid: str, name: str, kind: str) -> None:
         a("\t\t\t\tMACOSX_DEPLOYMENT_TARGET = 14.0;")
         a("\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.grokusage.tests;")
         a('\t\t\t\tPRODUCT_NAME = "$(TARGET_NAME)";')
-        a("\t\t\t\tSWIFT_VERSION = 5.0;")
+        a(f"\t\t\t\tSWIFT_VERSION = {SWIFT_VERSION};")
         a('\t\t\t\tTEST_HOST = "$(BUILT_PRODUCTS_DIR)/Grok Usage.app/Contents/MacOS/Grok Usage";')
         a("\t\t\t\tENABLE_TESTING_SEARCH_PATHS = YES;")
     a("\t\t\t};")
