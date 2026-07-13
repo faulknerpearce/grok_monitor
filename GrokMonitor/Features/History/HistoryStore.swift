@@ -186,8 +186,13 @@ final class HistoryStore: ObservableObject {
             return
         }
 
-        if let existing = findRecord(on: dayStart, calendar: cal) {
+        let sameDay = findRecords(on: dayStart, calendar: cal)
+        if let existing = sameDay.first {
             existing.apply(snapshot)
+            // Collapse legacy duplicates so each calendar day has one end-of-day row.
+            for extra in sameDay.dropFirst() {
+                context.delete(extra)
+            }
             save(context: context)
             reload()
             return
@@ -221,17 +226,19 @@ final class HistoryStore: ObservableObject {
         }
     }
 
-    private func findRecord(on dayStart: Date, calendar: Calendar) -> UsageSnapshotRecord? {
-        guard let context else { return nil }
-        let end = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
-        var descriptor = FetchDescriptor<UsageSnapshotRecord>(
+    /// Same-day lookup: fetch a window, then filter with `Calendar` (more reliable than exact predicate bounds).
+    private func findRecords(on dayStart: Date, calendar: Calendar) -> [UsageSnapshotRecord] {
+        guard let context else { return [] }
+        let windowStart = calendar.date(byAdding: .day, value: -1, to: dayStart) ?? dayStart
+        let windowEnd = calendar.date(byAdding: .day, value: 2, to: dayStart) ?? dayStart
+        let descriptor = FetchDescriptor<UsageSnapshotRecord>(
             predicate: #Predicate { record in
-                record.fetchedAt >= dayStart && record.fetchedAt < end
+                record.fetchedAt >= windowStart && record.fetchedAt < windowEnd
             },
             sortBy: [SortDescriptor(\.fetchedAt, order: .reverse)]
         )
-        descriptor.fetchLimit = 1
-        return try? context.fetch(descriptor).first
+        let candidates = (try? context.fetch(descriptor)) ?? []
+        return candidates.filter { calendar.isDate($0.fetchedAt, inSameDayAs: dayStart) }
     }
 
     private func reload() {

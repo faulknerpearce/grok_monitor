@@ -4,10 +4,9 @@ import Foundation
 ///
 /// Priority:
 /// 1. Server daily series (when discovered / passed in)
-/// 2. Local snapshot deltas between successive sample days
-/// 3. On the first tracked day (no earlier sample), attribute that day’s
-///    cumulative weekly used % to that day — never invent usage for days
-///    before tracking started
+/// 2. Local snapshot deltas between successive sample days **within the billing week**
+/// 3. Until two in-week sample days exist, leave bars empty — do not paint
+///    week-to-date product % onto the first sample day (that is not “usage that day”)
 enum DailyUsageBuilder {
 
     private static let weekdayFormatter: DateFormatter = {
@@ -101,17 +100,23 @@ enum DailyUsageBuilder {
         let weekdayFormatter = Self.weekdayFormatter
         weekdayFormatter.calendar = cal
 
+        // Only samples inside this billing week participate in day-over-day math.
+        // Prior-period samples must not create false "before reset" bars mid-week.
+        let inWeekSampleDays = sortedDays.filter { day in
+            day >= weekStart && day <= weekEnd
+        }
+
         var days: [DailyUsageDay] = []
-        var usedFirstDayAttribution = false
 
         for offset in 0..<7 {
             guard let dayStart = cal.date(byAdding: .day, value: offset, to: weekStart) else { continue }
             let isToday = cal.isDate(dayStart, inSameDayAs: now)
             let symbol = String(weekdayFormatter.string(from: dayStart).prefix(3))
 
-            // Prefer the latest prior *sample* day (not only calendar yesterday), so a
+            // Prefer the latest prior *in-week* sample day (not only calendar yesterday), so a
             // missing poll day still yields a correct multi-day delta on the next sample.
-            let prevCumulative = sortedDays.last { $0 < dayStart }.flatMap { cumulativeByDay[$0] }
+            let prevDayKey = inWeekSampleDays.last { $0 < dayStart }
+            let prevCumulative = prevDayKey.flatMap { cumulativeByDay[$0] }
             let dayCumulative = cumulativeByDay[dayStart]
 
             var segments: [DailyUsageSegment] = []
@@ -119,25 +124,12 @@ enum DailyUsageBuilder {
 
             if let dayCumulative {
                 let products = productsByDay[dayStart] ?? current?.products ?? []
-                let prevDayKey = sortedDays.last { $0 < dayStart }
                 let previousProducts = prevDayKey.flatMap { productsByDay[$0] } ?? []
                 if let previous = prevCumulative {
                     if dayCumulative + 5 < previous {
+                        // Pool reset between in-week samples. Without sub-day samples we cannot
+                        // split "before reset" accurately — leave empty and re-baseline.
                         isAfterReset = true
-                        if previous > 0.05 {
-                            segments.append(
-                                DailyUsageSegment(
-                                    productID: "before-reset",
-                                    displayName: "Before reset",
-                                    percentOfWeekly: previous,
-                                    colorToken: .voice,
-                                    isBeforeReset: true
-                                )
-                            )
-                        }
-                        if dayCumulative > 0.05 {
-                            segments.append(contentsOf: segmentsFromProducts(products))
-                        }
                     } else {
                         // Per-product deltas so only products that grew that day appear.
                         let productSegments = productDeltaSegments(
@@ -152,11 +144,8 @@ enum DailyUsageBuilder {
                             segments.append(contentsOf: distribute(total: totalDelta, products: products))
                         }
                     }
-                } else if dayCumulative > 0.05 {
-                    // First day we have history for — attribute cumulative used % here.
-                    segments.append(contentsOf: segmentsFromProducts(products, fallbackTotal: dayCumulative))
-                    usedFirstDayAttribution = true
                 }
+                // No prior in-week sample: leave empty. Week-to-date totals live in the header.
             }
 
             days.append(
@@ -170,23 +159,8 @@ enum DailyUsageBuilder {
             )
         }
 
-        // Safety net: current used % but no in-week samples yet.
-        let used = current?.usedPercent ?? samples.last?.usedPercent ?? 0
-        let products = current?.products ?? samples.last?.products ?? []
-        let hasAnySegments = days.contains { !$0.segments.isEmpty }
-        if !hasAnySegments, used > 0.05, weekOffset == 0 {
-            days = attributeToToday(
-                days: days,
-                usedPercent: used,
-                products: products,
-                calendar: cal,
-                now: now
-            )
-            return finalize(weekStart: weekStart, weekEnd: weekEnd, days: days, isEstimated: true)
-        }
-
-        // Estimated only while we have a single first-day attribution (no prior sample).
-        let isEstimated = usedFirstDayAttribution && sortedDays.count <= 1
+        // Waiting for a second in-week sample before any bar can be a true day-over-day delta.
+        let isEstimated = inWeekSampleDays.count < 2 && weekOffset == 0
         return finalize(weekStart: weekStart, weekEnd: weekEnd, days: days, isEstimated: isEstimated)
     }
 
@@ -302,35 +276,6 @@ enum DailyUsageBuilder {
 
     // MARK: - Helpers
 
-    /// Put all currently tracked weekly used % on today until day-to-day history exists.
-    private static func attributeToToday(
-        days: [DailyUsageDay],
-        usedPercent: Double,
-        products: [ProductUsage],
-        calendar: Calendar,
-        now: Date
-    ) -> [DailyUsageDay] {
-        let today = calendar.startOfDay(for: now)
-        return days.map { day in
-            guard calendar.isDate(day.dayStart, inSameDayAs: today), usedPercent > 0.05 else {
-                return DailyUsageDay(
-                    dayStart: day.dayStart,
-                    weekdaySymbol: day.weekdaySymbol,
-                    segments: [],
-                    isToday: day.isToday,
-                    isAfterReset: false
-                )
-            }
-            return DailyUsageDay(
-                dayStart: day.dayStart,
-                weekdaySymbol: day.weekdaySymbol,
-                segments: segmentsFromProducts(products, fallbackTotal: usedPercent),
-                isToday: true,
-                isAfterReset: false
-            )
-        }
-    }
-
     private static func buildDaysFromServer(
         serverDaily: [DailyUsageSnapshot],
         weekStart: Date,
@@ -438,10 +383,10 @@ enum DailyUsageBuilder {
         guard let total = fallbackTotal, total > 0.05 else { return [] }
         return [
             DailyUsageSegment(
-                productID: "build",
-                displayName: ProductCatalog.displayName(for: "build"),
+                productID: "other",
+                displayName: "Other",
                 percentOfWeekly: total,
-                colorToken: .build,
+                colorToken: .other,
                 isBeforeReset: false
             )
         ]
@@ -483,6 +428,9 @@ enum DailyUsageBuilder {
     }
 
     /// Proportional split of a total when product-level deltas are unavailable.
+    ///
+    /// Uses the current product mix only as weights for the *delta*, not as absolute
+    /// week-to-date amounts. When no products exist, label as "other" (never Build).
     private static func distribute(total: Double, products: [ProductUsage]) -> [DailyUsageSegment] {
         let visible = products.filter { $0.percentOfPool > 0.05 }
         let sum = visible.reduce(0.0) { $0 + $1.percentOfPool }
@@ -491,10 +439,10 @@ enum DailyUsageBuilder {
         if visible.isEmpty || sum < 0.05 {
             return [
                 DailyUsageSegment(
-                    productID: "build",
-                    displayName: ProductCatalog.displayName(for: "build"),
+                    productID: "other",
+                    displayName: "Other",
                     percentOfWeekly: total,
-                    colorToken: .build,
+                    colorToken: .other,
                     isBeforeReset: false
                 )
             ]

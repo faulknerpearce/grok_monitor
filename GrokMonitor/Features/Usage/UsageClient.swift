@@ -182,14 +182,15 @@ struct UsageClient: Sendable {
         }
     }
 
-    /// When product breakdown is unavailable, attribute used % to Grok Build.
+    /// When product breakdown is unavailable, keep a neutral "other" slice — never label as Build.
     static func synthesizeProducts(usedPercent: Double) -> [ProductUsage] {
         guard usedPercent > 0.05 else { return [] }
         return [
             ProductUsage(
-                id: "build",
-                displayName: ProductCatalog.displayName(for: "build"),
-                percentOfPool: usedPercent
+                id: "other",
+                displayName: "Other",
+                percentOfPool: usedPercent,
+                colorToken: .other
             )
         ]
     }

@@ -145,7 +145,7 @@ struct DailyUsageWeek: Hashable, Sendable {
     var showsBeforeReset: Bool
     /// True when at least one day has a real usage delta (not empty fallback).
     var hasDailyData: Bool
-    /// True when fills use today's tracked total only (no prior-day history yet).
+    /// True when fewer than two in-week samples exist (daily bars not yet day-over-day).
     var isEstimated: Bool
 
     /// Chronological days for the chart (billing week or Mon→Sun calendar window).

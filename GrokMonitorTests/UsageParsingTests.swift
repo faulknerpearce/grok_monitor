@@ -85,17 +85,21 @@ final class UsageParsingTests: XCTestCase {
 
     func testDailyUsageBuilderDeltas() {
         var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
         cal.firstWeekday = 2
-        let now = Date()
+        // Fixed mid-week pair so both samples sit inside the billing window.
+        let now = ISO8601DateFormatter().date(from: "2026-07-15T12:00:00Z")!
         let today = cal.startOfDay(for: now)
         guard let yesterday = cal.date(byAdding: .day, value: -1, to: today) else {
             return XCTFail("date math")
         }
+        let resetsAt = ISO8601DateFormatter().date(from: "2026-07-16T18:57:00Z")!
 
         let history = [
             WeeklyUsageSnapshot(
                 fetchedAt: yesterday.addingTimeInterval(3600 * 12),
                 usedPercent: 10,
+                resetsAt: resetsAt,
                 products: [
                     ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 7),
                     ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 3)
@@ -104,6 +108,7 @@ final class UsageParsingTests: XCTestCase {
             WeeklyUsageSnapshot(
                 fetchedAt: today.addingTimeInterval(3600 * 10),
                 usedPercent: 30,
+                resetsAt: resetsAt,
                 products: [
                     ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 20),
                     ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 10)
@@ -114,6 +119,7 @@ final class UsageParsingTests: XCTestCase {
             history: history,
             current: history.last,
             weekOffset: 0,
+            resetsAt: resetsAt,
             calendar: cal,
             now: now
         )
@@ -123,8 +129,8 @@ final class UsageParsingTests: XCTestCase {
 
         let yesterdayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: yesterday) }
         let todayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: today) }
-        // First sample day keeps its cumulative total; today is the day-over-day delta.
-        XCTAssertEqual(yesterdayDay?.totalPercent ?? 0, 10, accuracy: 0.2)
+        // First sample day stays empty; today is the day-over-day delta only.
+        XCTAssertEqual(yesterdayDay?.totalPercent ?? 0, 0, accuracy: 0.2)
         XCTAssertEqual(todayDay?.totalPercent ?? 0, 20, accuracy: 0.2)
         XCTAssertEqual(todayDay?.segments.count, 2)
     }
@@ -211,12 +217,14 @@ final class UsageParsingTests: XCTestCase {
 
         let yesterdayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: yesterday) }
         let todayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: today) }
-        XCTAssertEqual(yesterdayDay?.totalPercent ?? 0, 39, accuracy: 0.2)
+        // First sample is a baseline only; flat day-over-day → empty bars.
+        XCTAssertEqual(yesterdayDay?.totalPercent ?? 0, 0, accuracy: 0.2)
         XCTAssertEqual(todayDay?.totalPercent ?? 0, 0, accuracy: 0.2)
         XCTAssertFalse(week.isEstimated)
+        XCTAssertFalse(week.hasDailyData)
     }
 
-    func testDailyUsageAttributesToTodayWhenNoHistory() {
+    func testDailyUsageEmptyUntilSecondSampleDay() {
         var cal = Calendar(identifier: .gregorian)
         cal.firstWeekday = 2
         let now = ISO8601DateFormatter().date(from: "2026-07-11T18:00:00Z")!
@@ -240,13 +248,114 @@ final class UsageParsingTests: XCTestCase {
             calendar: cal,
             now: now
         )
-        XCTAssertTrue(week.hasDailyData)
+        // Single sample: do not paint week-to-date product % onto "today".
+        XCTAssertFalse(week.hasDailyData)
         XCTAssertTrue(week.isEstimated)
-        let today = week.days.first { cal.isDate($0.dayStart, inSameDayAs: now) }
-        XCTAssertEqual(today?.totalPercent ?? 0, 39, accuracy: 0.2)
-        // Prior days stay empty — do not invent usage before tracking started.
-        let prior = week.days.filter { !cal.isDate($0.dayStart, inSameDayAs: now) }
-        XCTAssertTrue(prior.allSatisfy(\.segments.isEmpty))
+        XCTAssertTrue(week.days.allSatisfy(\.segments.isEmpty))
+    }
+
+    func testDailyUsageExcludesFlatBuildFromToday() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        cal.firstWeekday = 2
+        let now = ISO8601DateFormatter().date(from: "2026-07-13T12:00:00Z")!
+        let today = cal.startOfDay(for: now)
+        guard
+            let day1 = cal.date(byAdding: .day, value: -2, to: today),
+            let day2 = cal.date(byAdding: .day, value: -1, to: today)
+        else {
+            return XCTFail("date math")
+        }
+        let resetsAt = ISO8601DateFormatter().date(from: "2026-07-16T18:57:00Z")!
+        let history = [
+            WeeklyUsageSnapshot(
+                fetchedAt: day1.addingTimeInterval(3600 * 20),
+                usedPercent: 46,
+                resetsAt: resetsAt,
+                products: [
+                    ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 27),
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 16),
+                    ProductUsage(id: "api", displayName: "API", percentOfPool: 3)
+                ]
+            ),
+            WeeklyUsageSnapshot(
+                fetchedAt: day2.addingTimeInterval(3600 * 14),
+                usedPercent: 51,
+                resetsAt: resetsAt,
+                products: [
+                    ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 31),
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 16),
+                    ProductUsage(id: "api", displayName: "API", percentOfPool: 4)
+                ]
+            ),
+            WeeklyUsageSnapshot(
+                fetchedAt: today.addingTimeInterval(3600 * 8),
+                usedPercent: 58,
+                resetsAt: resetsAt,
+                products: [
+                    ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 34),
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 16),
+                    ProductUsage(id: "api", displayName: "API", percentOfPool: 7),
+                    ProductUsage(id: "voice", displayName: "Voice", percentOfPool: 1)
+                ]
+            )
+        ]
+        let week = DailyUsageBuilder.week(
+            history: history,
+            current: history.last,
+            weekOffset: 0,
+            resetsAt: resetsAt,
+            calendar: cal,
+            now: now
+        )
+        let todayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: today) }
+        XCTAssertEqual(todayDay?.totalPercent ?? 0, 7, accuracy: 0.2)
+        XCTAssertFalse(todayDay?.segments.contains { $0.productID == "build" } ?? true)
+        XCTAssertTrue(todayDay?.segments.contains { $0.productID == "chat" } ?? false)
+        XCTAssertTrue(todayDay?.segments.contains { $0.productID == "api" } ?? false)
+        XCTAssertTrue(todayDay?.segments.contains { $0.productID == "voice" } ?? false)
+    }
+
+    func testDailyUsageIgnoresPriorBillingPeriodSample() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        cal.firstWeekday = 2
+        let now = ISO8601DateFormatter().date(from: "2026-07-13T12:00:00Z")!
+        let resetsAt = ISO8601DateFormatter().date(from: "2026-07-16T18:57:00Z")!
+        // Prior period end (before week start Jul 9) plus a single in-week sample.
+        let priorPeriod = ISO8601DateFormatter().date(from: "2026-07-08T18:00:00Z")!
+        let inWeek = ISO8601DateFormatter().date(from: "2026-07-13T10:00:00Z")!
+        let history = [
+            WeeklyUsageSnapshot(
+                fetchedAt: priorPeriod,
+                usedPercent: 90,
+                resetsAt: ISO8601DateFormatter().date(from: "2026-07-09T18:57:00Z"),
+                products: [
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 90)
+                ]
+            ),
+            WeeklyUsageSnapshot(
+                fetchedAt: inWeek,
+                usedPercent: 20,
+                resetsAt: resetsAt,
+                products: [
+                    ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 12),
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 8)
+                ]
+            )
+        ]
+        let week = DailyUsageBuilder.week(
+            history: history,
+            current: history.last,
+            weekOffset: 0,
+            resetsAt: resetsAt,
+            calendar: cal,
+            now: now
+        )
+        // Prior period must not create a giant before-reset bar; single in-week sample → empty.
+        XCTAssertFalse(week.showsBeforeReset)
+        XCTAssertTrue(week.days.allSatisfy(\.segments.isEmpty))
+        XCTAssertTrue(week.isEstimated)
     }
 
     func testDailyCapFillFraction() {

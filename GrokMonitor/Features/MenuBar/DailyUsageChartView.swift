@@ -47,7 +47,7 @@ struct DailyUsageChartView: View {
             }
 
             if week.isEstimated || !week.hasDailyData {
-                Text("Prior days fill in as usage is sampled across the week.")
+                Text("Daily bars only show changes between samples. Week-to-date totals are above.")
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }

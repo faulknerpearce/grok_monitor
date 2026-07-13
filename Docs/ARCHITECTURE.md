@@ -40,7 +40,7 @@ Grok Monitor is a SwiftUI agent-style macOS app (`LSUIElement` + `MenuBarExtra`)
 2. `UsagePoller` starts a loop: active interval while the menu is open, idle interval otherwise; pauses across sleep/wake.
 3. `UsageClient.fetchUsage()` tries REST JSON candidates, then grok.com gRPC-web billing, then CLI billing JSON.
 4. Successful snapshots update the UI and append to SwiftData (deduped).
-5. The dropdown **Daily use** chart scales each day to `100/7` of the weekly pool. Prefer server `dailySeries` when present; otherwise derive deltas between successive local sample days. The first tracked day shows that day’s cumulative weekly used % (prior empty days stay empty). Billing week bounds use `resetsAt` when available.
+5. The dropdown **Daily use** chart scales each day to `100/7` of the weekly pool. Prefer server `dailySeries` when present; otherwise derive **day-over-day deltas** between successive local sample days within the billing week. Bars stay empty until two in-week samples exist (week-to-date product % is never painted onto the first sample day). Billing week bounds use `resetsAt` when available.
 6. `ThresholdNotifier` fires once per threshold crossing.
 
 ## Auth storage
