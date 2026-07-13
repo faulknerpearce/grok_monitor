@@ -13,35 +13,47 @@ struct MenuBarPanelView: View {
 
     /// 0 = current calendar week; negative = past weeks.
     @State private var weekOffset: Int = 0
+    @State private var showGeminiPopup = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if auth.needsSignIn && auth.isSignedIn {
-                sessionExpiredHeader
-            } else if auth.isSignedIn, let snapshot = poller.snapshot {
-                usageHeader(snapshot)
-            } else if auth.isSignedIn {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Weekly SuperGrok Limit")
-                        .font(.system(size: 13, weight: .semibold))
-                    Text(poller.isRefreshing ? "Refreshing…" : (poller.lastError ?? "Signed in — waiting for usage data."))
-                        .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                    if poller.lastError != nil {
-                        Button("Sign In Again…") { openSignIn() }
+        ZStack {
+            VStack(alignment: .leading, spacing: 0) {
+                if auth.needsSignIn && auth.isSignedIn {
+                    sessionExpiredHeader
+                } else if auth.isSignedIn, let snapshot = poller.snapshot {
+                    usageHeader(snapshot)
+                } else if auth.isSignedIn {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Weekly SuperGrok Limit")
+                            .font(.system(size: 13, weight: .semibold))
+                        Text(poller.isRefreshing ? "Refreshing…" : (poller.lastError ?? "Signed in — waiting for usage data."))
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                        if poller.lastError != nil {
+                            Button("Sign In Again…") { openSignIn() }
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    signedOutHeader
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                signedOutHeader
+
+                Divider().padding(.vertical, 6)
+
+                menuActions
             }
+            .padding(12)
+            .opacity(showGeminiPopup ? 0 : 1)
+            .allowsHitTesting(!showGeminiPopup)
 
-            Divider().padding(.vertical, 6)
-
-            menuActions
+            if showGeminiPopup {
+                geminiPopupContent
+                    .padding(12)
+                    .transition(.opacity)
+            }
         }
-        .padding(12)
         .frame(width: 340)
+        .animation(.easeInOut(duration: 0.15), value: showGeminiPopup)
         .onAppear {
             poller.menuIsOpen = true
             Task { await poller.refreshNow() }
@@ -172,6 +184,12 @@ struct MenuBarPanelView: View {
 
             Divider().padding(.vertical, 4)
 
+            panelButton("Add Gemini", shortcut: nil) {
+                showGeminiPopup = true
+            }
+
+            Divider().padding(.vertical, 4)
+
             panelButton("Quit Grok Monitor", shortcut: "⌘Q") {
                 NSApp.terminate(nil)
             }
@@ -211,6 +229,55 @@ struct MenuBarPanelView: View {
         .padding(.horizontal, 6)
         .padding(.vertical, 5)
     }
+
+    private var geminiPopupContent: some View {
+        ZStack {
+            VStack(spacing: 16) {
+                Image(nsImage: Self.noGeminiImage)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 140, height: 140)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+
+                Text("Use a better model.")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+
+            VStack {
+                HStack {
+                    Button {
+                        showGeminiPopup = false
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chevron.left")
+                            Text("Back")
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .font(.system(size: 13))
+                    Spacer()
+                }
+                Spacer()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Prefer the bundled PNG file so MenuBarExtra reliably shows the provided artwork.
+    private static let noGeminiImage: NSImage = {
+        let image: NSImage
+        if let url = Bundle.main.url(forResource: "NoGemini", withExtension: "png"),
+           let fromFile = NSImage(contentsOf: url) {
+            image = fromFile
+        } else if let named = NSImage(named: "NoGemini") {
+            image = (named.copy() as? NSImage) ?? named
+        } else {
+            image = NSImage(size: NSSize(width: 140, height: 140))
+        }
+        image.isTemplate = false
+        return image
+    }()
 
     private static let currencyFormatter: NumberFormatter = {
         let f = NumberFormatter()

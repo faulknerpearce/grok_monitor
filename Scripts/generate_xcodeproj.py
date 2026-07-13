@@ -20,6 +20,7 @@ def uid(seed: str) -> str:
 swift_files = sorted(p.relative_to(ROOT) for p in SRC.rglob("*.swift"))
 test_files = sorted(p.relative_to(ROOT) for p in TESTS.rglob("*.swift"))
 asset = Path("GrokMonitor/Resources/Assets.xcassets")
+no_gemini = Path("GrokMonitor/Resources/NoGemini.png")
 fixture = Path("GrokMonitor/Fixtures/usage_fixture.json")
 info = Path("GrokMonitor/Resources/Info.plist")
 ent = Path("GrokMonitor/Resources/GrokMonitor.entitlements")
@@ -34,10 +35,12 @@ ids = {k: uid(f"id:{k}") for k in [
     "test_sources", "test_frameworks", "dep", "proxy", "app_in_tests",
 ]}
 
-file_refs = {str(p): uid(f"ref:{p}") for p in [*swift_files, *test_files, asset, fixture, info, ent, privacy]}
+resource_files = [asset, no_gemini, fixture, info, ent, privacy]
+file_refs = {str(p): uid(f"ref:{p}") for p in [*swift_files, *test_files, *resource_files]}
 src_builds = [(uid(f"src_build:{p}"), file_refs[str(p)], p.name) for p in swift_files]
 res_builds = [
     (uid(f"res_build:{asset}"), file_refs[str(asset)], "Assets.xcassets"),
+    (uid(f"res_build:{no_gemini}"), file_refs[str(no_gemini)], "NoGemini.png"),
     (uid(f"res_build:{fixture}"), file_refs[str(fixture)], "usage_fixture.json"),
     (uid(f"res_build:{privacy}"), file_refs[str(privacy)], "PrivacyInfo.xcprivacy"),
 ]
@@ -81,6 +84,7 @@ for p in swift_files:
 for p in test_files:
     a(f'\t\t{file_refs[str(p)]} /* {p.name} */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = {p.as_posix()}; sourceTree = SOURCE_ROOT; }};')
 a(f'\t\t{file_refs[str(asset)]} /* Assets.xcassets */ = {{isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = {asset.as_posix()}; sourceTree = SOURCE_ROOT; }};')
+a(f'\t\t{file_refs[str(no_gemini)]} /* NoGemini.png */ = {{isa = PBXFileReference; lastKnownFileType = image.png; path = {no_gemini.as_posix()}; sourceTree = SOURCE_ROOT; }};')
 a(f'\t\t{file_refs[str(fixture)]} /* usage_fixture.json */ = {{isa = PBXFileReference; lastKnownFileType = text.json; path = {fixture.as_posix()}; sourceTree = SOURCE_ROOT; }};')
 a(f'\t\t{file_refs[str(info)]} /* Info.plist */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = {info.as_posix()}; sourceTree = SOURCE_ROOT; }};')
 a(f'\t\t{file_refs[str(ent)]} /* GrokMonitor.entitlements */ = {{isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = {ent.as_posix()}; sourceTree = SOURCE_ROOT; }};')
@@ -120,6 +124,7 @@ a(f"\t\t{ids['res_group']} /* Resources */ = {{")
 a("\t\t\tisa = PBXGroup;")
 a("\t\t\tchildren = (")
 a(f"\t\t\t\t{file_refs[str(asset)]} /* Assets.xcassets */,")
+a(f"\t\t\t\t{file_refs[str(no_gemini)]} /* NoGemini.png */,")
 a(f"\t\t\t\t{file_refs[str(fixture)]} /* usage_fixture.json */,")
 a(f"\t\t\t\t{file_refs[str(info)]} /* Info.plist */,")
 a(f"\t\t\t\t{file_refs[str(ent)]} /* GrokMonitor.entitlements */,")
