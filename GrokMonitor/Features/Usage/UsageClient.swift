@@ -196,7 +196,7 @@ struct UsageClient: Sendable {
     }
 
     static func loadFixture() throws -> WeeklyUsageSnapshot {
-        let bundles: [Bundle] = [.main]
+        var bundles: [Bundle] = [.main]
         #if SWIFT_PACKAGE
         bundles.append(contentsOf: Bundle.allBundles.filter { $0.bundlePath.hasSuffix("GrokMonitor_GrokMonitor.bundle") })
         #endif

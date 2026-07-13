@@ -27,6 +27,7 @@
 		0EBAFFAB8A16CEB7E4E30296 /* UsageModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDEEFDF50DAD5CE0383F18FF /* UsageModels.swift */; };
 		9D3EA2EB498A3039E2AA2B3D /* UsagePoller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 162CC95B22D90894F79B312B /* UsagePoller.swift */; };
 		24FB24C1D2059E0C42DB97A9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B39E9CEC9A4D50501736E2B1 /* Assets.xcassets */; };
+		1E8E279946AEFEA534216311 /* NoGemini.png in Resources */ = {isa = PBXBuildFile; fileRef = D60512D0FC345C476518ADAB /* NoGemini.png */; };
 		3B2D8266D5092B6E316E6FF9 /* usage_fixture.json in Resources */ = {isa = PBXBuildFile; fileRef = DF1225B627F7F53AC50C82AA /* usage_fixture.json */; };
 		35092F9264CFBEA9D68AF7C3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 299AA85BAEF48A6BDF0211E7 /* PrivacyInfo.xcprivacy */; };
 		76F52E04E61E2CEFC2B09FBD /* UsageParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E37CC19017986A500E81415 /* UsageParsingTests.swift */; };
@@ -67,6 +68,7 @@
 		162CC95B22D90894F79B312B /* UsagePoller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrokMonitor/Features/Usage/UsagePoller.swift; sourceTree = SOURCE_ROOT; };
 		8E37CC19017986A500E81415 /* UsageParsingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrokMonitorTests/UsageParsingTests.swift; sourceTree = SOURCE_ROOT; };
 		B39E9CEC9A4D50501736E2B1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = GrokMonitor/Resources/Assets.xcassets; sourceTree = SOURCE_ROOT; };
+		D60512D0FC345C476518ADAB /* NoGemini.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = GrokMonitor/Resources/NoGemini.png; sourceTree = SOURCE_ROOT; };
 		DF1225B627F7F53AC50C82AA /* usage_fixture.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = GrokMonitor/Fixtures/usage_fixture.json; sourceTree = SOURCE_ROOT; };
 		0AEED5954AAC92DCCB0625AF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = GrokMonitor/Resources/Info.plist; sourceTree = SOURCE_ROOT; };
 		27911FF9BD71EA9D238516D6 /* GrokMonitor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = GrokMonitor/Resources/GrokMonitor.entitlements; sourceTree = SOURCE_ROOT; };
@@ -124,6 +126,7 @@
 			isa = PBXGroup;
 			children = (
 				B39E9CEC9A4D50501736E2B1 /* Assets.xcassets */,
+				D60512D0FC345C476518ADAB /* NoGemini.png */,
 				DF1225B627F7F53AC50C82AA /* usage_fixture.json */,
 				0AEED5954AAC92DCCB0625AF /* Info.plist */,
 				27911FF9BD71EA9D238516D6 /* GrokMonitor.entitlements */,
@@ -203,6 +206,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				24FB24C1D2059E0C42DB97A9 /* Assets.xcassets in Resources */,
+				1E8E279946AEFEA534216311 /* NoGemini.png in Resources */,
 				3B2D8266D5092B6E316E6FF9 /* usage_fixture.json in Resources */,
 				35092F9264CFBEA9D68AF7C3 /* PrivacyInfo.xcprivacy in Resources */,
 			);
