@@ -316,6 +316,125 @@ final class UsageParsingTests: XCTestCase {
         XCTAssertTrue(todayDay?.segments.contains { $0.productID == "voice" } ?? false)
     }
 
+    /// Mid-period server recalibration: used% drops but `resetsAt` stays the same.
+    /// Invalidates pre-rebase samples so prior days do not keep inflated bars while
+    /// the rebased week-to-date is painted on the recalibration day.
+    func testDailyUsageMidPeriodRecalibrationRebasesOntoThatDay() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        cal.firstWeekday = 2
+        let now = ISO8601DateFormatter().date(from: "2026-07-14T22:00:00Z")!
+        let today = cal.startOfDay(for: now)
+        guard
+            let yesterday = cal.date(byAdding: .day, value: -1, to: today),
+            let twoDaysAgo = cal.date(byAdding: .day, value: -2, to: today)
+        else {
+            return XCTFail("date math")
+        }
+        // Same billing period as live history (reset still Jul 16).
+        let resetsAt = ISO8601DateFormatter().date(from: "2026-07-16T18:57:00Z")!
+        let history = [
+            WeeklyUsageSnapshot(
+                fetchedAt: twoDaysAgo.addingTimeInterval(3600 * 18),
+                usedPercent: 51,
+                resetsAt: resetsAt,
+                products: [
+                    ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 31),
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 16),
+                    ProductUsage(id: "api", displayName: "API", percentOfPool: 4)
+                ]
+            ),
+            WeeklyUsageSnapshot(
+                fetchedAt: yesterday.addingTimeInterval(3600 * 12),
+                usedPercent: 71,
+                resetsAt: resetsAt,
+                products: [
+                    ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 34),
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 28),
+                    ProductUsage(id: "api", displayName: "API", percentOfPool: 7),
+                    ProductUsage(id: "voice", displayName: "Voice", percentOfPool: 2)
+                ]
+            ),
+            WeeklyUsageSnapshot(
+                fetchedAt: today.addingTimeInterval(3600 * 16),
+                usedPercent: 28,
+                resetsAt: resetsAt,
+                products: [
+                    ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 1),
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 20),
+                    ProductUsage(id: "api", displayName: "API", percentOfPool: 7)
+                ]
+            )
+        ]
+        let week = DailyUsageBuilder.week(
+            history: history,
+            current: history.last,
+            weekOffset: 0,
+            resetsAt: resetsAt,
+            calendar: cal,
+            now: now
+        )
+        let todayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: today) }
+        let yesterdayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: yesterday) }
+        let olderDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: twoDaysAgo) }
+        // Drop prior days; start tracking on the reset day with current week-to-date.
+        XCTAssertTrue(todayDay?.isAfterReset ?? false)
+        XCTAssertEqual(olderDay?.totalPercent ?? 0, 0, accuracy: 0.2)
+        XCTAssertEqual(yesterdayDay?.totalPercent ?? 0, 0, accuracy: 0.2)
+        XCTAssertEqual(todayDay?.totalPercent ?? 0, 28, accuracy: 0.5)
+        XCTAssertTrue(todayDay?.segments.contains { $0.productID == "build" } ?? false)
+        XCTAssertTrue(week.isEstimated)
+    }
+
+    /// Real period rollover: used% drops AND sample `resetsAt` advances — mark after-reset
+    /// and attribute the new period total to that sample day.
+    func testDailyUsageRealResetShowsPostResetUsage() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        cal.firstWeekday = 2
+        // Hold the chart on the pre-reset billing window so both samples stay in-range.
+        let now = ISO8601DateFormatter().date(from: "2026-07-15T20:00:00Z")!
+        let today = cal.startOfDay(for: now)
+        guard let yesterday = cal.date(byAdding: .day, value: -1, to: today) else {
+            return XCTFail("date math")
+        }
+        let oldResets = ISO8601DateFormatter().date(from: "2026-07-16T18:57:00Z")!
+        let newResets = ISO8601DateFormatter().date(from: "2026-07-23T18:57:00Z")!
+        let history = [
+            WeeklyUsageSnapshot(
+                fetchedAt: yesterday.addingTimeInterval(3600 * 12),
+                usedPercent: 90,
+                resetsAt: oldResets,
+                products: [
+                    ProductUsage(id: "build", displayName: "Grok Build", percentOfPool: 90)
+                ]
+            ),
+            WeeklyUsageSnapshot(
+                fetchedAt: today.addingTimeInterval(3600 * 8),
+                usedPercent: 12,
+                resetsAt: newResets,
+                products: [
+                    ProductUsage(id: "chat", displayName: "Chat", percentOfPool: 8),
+                    ProductUsage(id: "api", displayName: "API", percentOfPool: 4)
+                ]
+            )
+        ]
+        let week = DailyUsageBuilder.week(
+            history: history,
+            current: history.last,
+            weekOffset: 0,
+            // Window Jul 9–15 (day before oldResets), not the post-reset week.
+            resetsAt: oldResets,
+            calendar: cal,
+            now: now
+        )
+        let todayDay = week.days.first { cal.isDate($0.dayStart, inSameDayAs: today) }
+        XCTAssertNotNil(todayDay)
+        XCTAssertTrue(todayDay?.isAfterReset ?? false)
+        XCTAssertEqual(todayDay?.totalPercent ?? 0, 12, accuracy: 0.2)
+        XCTAssertTrue(todayDay?.segments.contains { $0.productID == "chat" } ?? false)
+    }
+
     func testDailyUsageIgnoresPriorBillingPeriodSample() {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(secondsFromGMT: 0)!

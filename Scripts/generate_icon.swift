@@ -2,8 +2,8 @@
 import AppKit
 import Foundation
 
-/// Black Grok singularity mark on a white rounded plate — visible in Spotlight / Finder
-/// (pure black-on-transparent disappears on dark Spotlight rows).
+/// Black Grok singularity mark on a full-bleed white square — visible in Spotlight / Finder
+/// (pure black-on-transparent disappears on dark Spotlight rows). macOS applies the icon mask.
 
 func grokPath(in rect: NSRect) -> NSBezierPath {
     let s = min(rect.width, rect.height) / 16
@@ -70,17 +70,13 @@ func drawIcon(size: Int, path: String) {
     NSGraphicsContext.current = nsCtx
     defer { NSGraphicsContext.restoreGraphicsState() }
 
-    // White rounded plate so the black mark stays visible in dark Spotlight / Finder.
-    let plateInset = max(1, pixels * 0.02)
-    let plateRect = NSRect(
-        x: plateInset,
-        y: plateInset,
-        width: pixels - plateInset * 2,
-        height: pixels - plateInset * 2
-    )
-    let corner = pixels * 0.22
-    NSColor.white.setFill()
-    NSBezierPath(roundedRect: plateRect, xRadius: corner, yRadius: corner).fill()
+    // Full-bleed fill — macOS applies the squircle mask; do not inset or pre-round.
+    // Pure grayscale (white + black) is stored as Monochrome in Assets.car, and
+    // IconServices then mounts the image on a gray plate (side gaps in Spotlight).
+    // A near-white cool tint keeps R≠G≠B so actool keeps RGB and fills edge-to-edge
+    // like VS Code / Chrome.
+    NSColor(srgbRed: 0.995, green: 0.997, blue: 1.0, alpha: 1).setFill()
+    NSBezierPath(rect: NSRect(x: 0, y: 0, width: pixels, height: pixels)).fill()
 
     let markInset = pixels * 0.18
     let drawRect = NSRect(
@@ -89,7 +85,8 @@ func drawIcon(size: Int, path: String) {
         width: pixels - markInset * 2,
         height: pixels - markInset * 2
     )
-    NSColor.black.setFill()
+    // Near-black with a slight blue cast (still reads as black; not pure gray).
+    NSColor(srgbRed: 0.02, green: 0.02, blue: 0.04, alpha: 1).setFill()
     grokPath(in: drawRect).fill()
 
     guard let cgImage = ctx.makeImage() else {
@@ -97,7 +94,26 @@ func drawIcon(size: Int, path: String) {
         return
     }
 
-    let rep = NSBitmapImageRep(cgImage: cgImage)
+    // Flatten to opaque RGB PNG (no alpha channel) for IconServices.
+    guard let rgbCtx = CGContext(
+        data: nil,
+        width: size,
+        height: size,
+        bitsPerComponent: 8,
+        bytesPerRow: 0,
+        space: CGColorSpace(name: CGColorSpace.sRGB)!,
+        bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue
+    ) else {
+        fputs("Failed to create opaque context for \(size)\n", stderr)
+        return
+    }
+    rgbCtx.draw(cgImage, in: CGRect(x: 0, y: 0, width: pixels, height: pixels))
+    guard let opaque = rgbCtx.makeImage() else {
+        fputs("Failed to make opaque image for \(size)\n", stderr)
+        return
+    }
+
+    let rep = NSBitmapImageRep(cgImage: opaque)
     rep.size = NSSize(width: pixels, height: pixels)
     guard let data = rep.representation(using: .png, properties: [:]) else {
         fputs("Failed to create PNG data for \(size)\n", stderr)

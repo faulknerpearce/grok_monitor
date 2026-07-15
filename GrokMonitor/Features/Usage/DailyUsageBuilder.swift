@@ -5,8 +5,9 @@ import Foundation
 /// Priority:
 /// 1. Server daily series (when discovered / passed in)
 /// 2. Local snapshot deltas between successive sample days **within the billing week**
-/// 3. Until two in-week sample days exist, leave bars empty — do not paint
-///    week-to-date product % onto the first sample day (that is not “usage that day”)
+/// 3. Mid-period reset/rebase (used% drops, `resetsAt` unchanged): drop prior days and
+///    start tracking from that day with the current week-to-date total
+/// 4. Until two valid sample days exist (normal week), leave bars empty
 enum DailyUsageBuilder {
 
     private static let weekdayFormatter: DateFormatter = {
@@ -106,6 +107,20 @@ enum DailyUsageBuilder {
             day >= weekStart && day <= weekEnd
         }
 
+        // Mid-period server reset/rebase (used% drops, `resetsAt` unchanged): drop every
+        // prior sample day and start the daily series from that day forward.
+        let trackingStartDay = latestMidPeriodRecalibrationDay(
+            sampleDays: inWeekSampleDays,
+            cumulativeByDay: cumulativeByDay,
+            endOfDay: endOfDay
+        )
+        let validSampleDays: [Date]
+        if let trackingStartDay {
+            validSampleDays = inWeekSampleDays.filter { $0 >= trackingStartDay }
+        } else {
+            validSampleDays = inWeekSampleDays
+        }
+
         var days: [DailyUsageDay] = []
 
         for offset in 0..<7 {
@@ -113,39 +128,51 @@ enum DailyUsageBuilder {
             let isToday = cal.isDate(dayStart, inSameDayAs: now)
             let symbol = String(weekdayFormatter.string(from: dayStart).prefix(3))
 
-            // Prefer the latest prior *in-week* sample day (not only calendar yesterday), so a
+            // Prefer the latest prior *valid* sample day (not only calendar yesterday), so a
             // missing poll day still yields a correct multi-day delta on the next sample.
-            let prevDayKey = inWeekSampleDays.last { $0 < dayStart }
+            let prevDayKey = validSampleDays.last { $0 < dayStart }
             let prevCumulative = prevDayKey.flatMap { cumulativeByDay[$0] }
             let dayCumulative = cumulativeByDay[dayStart]
+            // Dropped pre-reset days still have snapshots; never paint them.
+            let dayIsValid = validSampleDays.contains(dayStart)
+            let isTrackingStart = trackingStartDay.map { cal.isDate(dayStart, inSameDayAs: $0) } ?? false
 
             var segments: [DailyUsageSegment] = []
-            var isAfterReset = false
+            var isAfterReset = isTrackingStart
 
-            if let dayCumulative {
+            if let dayCumulative, dayIsValid {
                 let products = productsByDay[dayStart] ?? current?.products ?? []
                 let previousProducts = prevDayKey.flatMap { productsByDay[$0] } ?? []
                 if let previous = prevCumulative {
                     if dayCumulative + 5 < previous {
-                        // Pool reset between in-week samples. Without sub-day samples we cannot
-                        // split "before reset" accurately — leave empty and re-baseline.
+                        // Another drop after we already re-started tracking.
                         isAfterReset = true
-                    } else {
-                        // Per-product deltas so only products that grew that day appear.
-                        let productSegments = productDeltaSegments(
-                            from: previousProducts,
-                            to: products
-                        )
-                        let productSum = productSegments.reduce(0.0) { $0 + $1.percentOfWeekly }
-                        let totalDelta = max(0, dayCumulative - previous)
-                        if !productSegments.isEmpty, productSum > 0.05 {
-                            segments.append(contentsOf: productSegments)
-                        } else if totalDelta > 0.05 {
-                            segments.append(contentsOf: distribute(total: totalDelta, products: products))
+                        if dayCumulative > 0.05 {
+                            segments.append(
+                                contentsOf: segmentsFromProducts(
+                                    products,
+                                    fallbackTotal: dayCumulative
+                                )
+                            )
                         }
+                    } else {
+                        segments.append(
+                            contentsOf: growthSegments(
+                                previousUsed: previous,
+                                dayUsed: dayCumulative,
+                                previousProducts: previousProducts,
+                                products: products
+                            )
+                        )
                     }
+                } else if dayCumulative > 0.05, isTrackingStart {
+                    // Fresh start after reset: current week-to-date is today's bar.
+                    // Later days use normal day-over-day deltas from here.
+                    segments.append(
+                        contentsOf: segmentsFromProducts(products, fallbackTotal: dayCumulative)
+                    )
                 }
-                // No prior in-week sample: leave empty. Week-to-date totals live in the header.
+                // First sample of a normal week (no reset): leave empty until day two.
             }
 
             days.append(
@@ -159,8 +186,8 @@ enum DailyUsageBuilder {
             )
         }
 
-        // Waiting for a second in-week sample before any bar can be a true day-over-day delta.
-        let isEstimated = inWeekSampleDays.count < 2 && weekOffset == 0
+        // Estimated while we only have a single post-reset sample day.
+        let isEstimated = validSampleDays.count < 2 && weekOffset == 0
         return finalize(weekStart: weekStart, weekEnd: weekEnd, days: days, isEstimated: isEstimated)
     }
 
@@ -390,6 +417,58 @@ enum DailyUsageBuilder {
                 isBeforeReset: false
             )
         ]
+    }
+
+    /// True when `resetsAt` moved forward enough to indicate a SuperGrok period rollover.
+    /// Missing metadata falls back to treating a large used% drop as a rollover (legacy heuristic).
+    private static func isBillingPeriodAdvanced(from previous: Date?, to current: Date?) -> Bool {
+        guard let previous, let current else { return true }
+        return current.timeIntervalSince(previous) > 12 * 3600
+    }
+
+    /// Latest day whose cumulative used% fell sharply without `resetsAt` advancing (server rebase).
+    private static func latestMidPeriodRecalibrationDay(
+        sampleDays: [Date],
+        cumulativeByDay: [Date: Double],
+        endOfDay: [Date: WeeklyUsageSnapshot]
+    ) -> Date? {
+        guard sampleDays.count >= 2 else { return nil }
+        var latest: Date?
+        for index in 1..<sampleDays.count {
+            let previousDay = sampleDays[index - 1]
+            let day = sampleDays[index]
+            guard
+                let previousUsed = cumulativeByDay[previousDay],
+                let dayUsed = cumulativeByDay[day],
+                dayUsed + 5 < previousUsed
+            else { continue }
+            let previousResets = endOfDay[previousDay]?.resetsAt
+            let dayResets = endOfDay[day]?.resetsAt
+            if isBillingPeriodAdvanced(from: previousResets, to: dayResets) {
+                continue
+            }
+            latest = day
+        }
+        return latest
+    }
+
+    /// Day-over-day growth: prefer per-product increases; fall back to total delta weighted by mix.
+    private static func growthSegments(
+        previousUsed: Double,
+        dayUsed: Double,
+        previousProducts: [ProductUsage],
+        products: [ProductUsage]
+    ) -> [DailyUsageSegment] {
+        let productSegments = productDeltaSegments(from: previousProducts, to: products)
+        let productSum = productSegments.reduce(0.0) { $0 + $1.percentOfWeekly }
+        let totalDelta = max(0, dayUsed - previousUsed)
+        if !productSegments.isEmpty, productSum > 0.05 {
+            return productSegments
+        }
+        if totalDelta > 0.05 {
+            return distribute(total: totalDelta, products: products)
+        }
+        return []
     }
 
     /// Day-over-day growth per product — omits products that did not increase.
