@@ -29,11 +29,11 @@ enum ProductColor: String, Codable, CaseIterable, Sendable {
     /// Canonical sRGB components shared by SwiftUI and AppKit renderers.
     var sRGB: (red: Double, green: Double, blue: Double, alpha: Double) {
         switch self {
-        case .build: return (0.22, 0.48, 0.92, 1) // dark blue — Grok Build
-        case .api: return (0.30, 0.58, 0.98, 1) // medium blue — API
-        case .chat: return (0.55, 0.82, 1.0, 1) // light blue — Chat
-        case .imagine: return (0.85, 0.45, 0.85, 1)
-        case .voice: return (0.95, 0.65, 0.25, 1)
+        case .build: return (0.11, 0.38, 0.82, 1) // navy — Grok Build
+        case .voice: return (0.22, 0.50, 0.92, 1) // dark blue — Voice
+        case .api: return (0.35, 0.62, 0.98, 1) // medium blue — API
+        case .chat: return (0.55, 0.78, 1.0, 1) // sky blue — Chat
+        case .imagine: return (0.75, 0.90, 1.0, 1) // pale blue — Imagine
         case .other: return (0.45, 0.45, 0.45, 1)
         }
     }
@@ -44,7 +44,7 @@ enum ProductCatalog {
     /// Preference toggle order.
     static let knownIDs = ["build", "api", "chat", "imagine", "voice"]
     /// Visual priority for bars / chips (chat first, matching grok.com Usage).
-    static let displayOrder = ["chat", "build", "api", "imagine", "voice"]
+    static let displayOrder = ["chat", "build", "voice", "api", "imagine"]
 
     static func displayName(for id: String) -> String {
         switch id.lowercased() {

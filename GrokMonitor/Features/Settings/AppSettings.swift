@@ -78,11 +78,20 @@ final class AppSettings: ObservableObject {
     private static func clampIdlePoll(_ value: Int) -> Int { max(15, min(3600, value)) }
 
     func filteredProducts(from snapshot: WeeklyUsageSnapshot) -> [ProductUsage] {
-        ProductCatalog.sortForDisplay(
-            snapshot.products.filter {
-                visibleProductIDs.contains($0.id.lowercased()) && $0.percentOfPool > 0.05
+        let filtered = snapshot.products.filter {
+            visibleProductIDs.contains($0.id.lowercased()) && $0.percentOfPool > 0.05
+        }
+        var seen: [String: ProductUsage] = [:]
+        for product in filtered {
+            let key = product.id.lowercased()
+            if var existing = seen[key] {
+                existing.percentOfPool += product.percentOfPool
+                seen[key] = existing
+            } else {
+                seen[key] = product
             }
-        )
+        }
+        return ProductCatalog.sortForDisplay(Array(seen.values))
     }
 
     private func updateLaunchAtLogin() {

@@ -162,7 +162,7 @@ struct DailyUsageChartView: View {
 
     /// Bottom → top stack order matching grok.com Usage. Skip zero-height slices.
     private func stackedSegments(for day: DailyUsageDay) -> [DailyUsageSegment] {
-        let order = ["before-reset", "api", "build", "chat", "imagine", "voice"]
+        let order = ["before-reset", "voice", "api", "build", "chat", "imagine"]
         return day.segments
             .filter { $0.percentOfWeekly > 0.05 }
             .sorted { a, b in
@@ -176,14 +176,14 @@ struct DailyUsageChartView: View {
 
     private func segmentColor(_ segment: DailyUsageSegment) -> Color {
         if segment.isBeforeReset {
-            return Color(red: 0.92, green: 0.72, blue: 0.20)
+            return Color(red: 0.42, green: 0.56, blue: 0.80)
         }
         return Color.product(segment.colorToken)
     }
 
     private func legendColor(for item: DailyUsageLegendItem) -> Color {
         if item.id == "before-reset" {
-            return Color(red: 0.92, green: 0.72, blue: 0.20)
+            return Color(red: 0.42, green: 0.56, blue: 0.80)
         }
         return Color.product(item.colorToken)
     }

@@ -81,6 +81,11 @@ enum DailyUsageBuilder {
         for sample in samples {
             let day = cal.startOfDay(for: sample.fetchedAt)
             if let existing = endOfDay[day] {
+                if let existingResets = existing.resetsAt,
+                   let sampleResets = sample.resetsAt,
+                   sampleResets.timeIntervalSince(existingResets) > 12 * 3600 {
+                    continue
+                }
                 if sample.fetchedAt >= existing.fetchedAt {
                     endOfDay[day] = sample
                 }
@@ -365,7 +370,7 @@ enum DailyUsageBuilder {
             }
         }
         legend.sort { a, b in
-            let order = ["api", "chat", "build", "imagine", "voice", "before-reset"]
+            let order = ["voice", "api", "chat", "build", "imagine", "before-reset"]
             let ai = order.firstIndex(of: a.id) ?? 99
             let bi = order.firstIndex(of: b.id) ?? 99
             return ai < bi

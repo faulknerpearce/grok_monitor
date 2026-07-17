@@ -413,7 +413,7 @@ enum GRPCWebParser {
         3: ("imagine", "Imagine"),
         4: ("chat", "Chat"),
         5: ("voice", "Voice"),
-        6: ("api", "API")
+        6: ("voice", "Voice")
     ]
 
     static func parseUsage(_ data: Data, now: Date = Date()) throws -> Parsed {
@@ -573,16 +573,20 @@ enum GRPCWebParser {
             leadingEnums = enums
         }
 
-        var result: [ProductUsage] = []
+        var seen: [String: ProductUsage] = [:]
         for (enumValue, pct) in zip(leadingEnums, percents) {
             let meta = productEnumMap[enumValue]
                 ?? ("product-\(enumValue)", "Product \(enumValue)")
-            result.append(
-                ProductUsage(id: meta.id, displayName: meta.name, percentOfPool: pct)
-            )
+            let key = meta.id.lowercased()
+            if var existing = seen[key] {
+                existing.percentOfPool += pct
+                seen[key] = existing
+            } else {
+                seen[key] = ProductUsage(id: meta.id, displayName: meta.name, percentOfPool: pct)
+            }
         }
 
-        return ProductCatalog.sortForDisplay(result)
+        return ProductCatalog.sortForDisplay(Array(seen.values))
     }
 
     static func validateTrailers(_ data: Data) throws {
