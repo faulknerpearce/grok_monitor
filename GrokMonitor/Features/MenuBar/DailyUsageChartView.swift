@@ -162,7 +162,7 @@ struct DailyUsageChartView: View {
 
     /// Bottom → top stack order matching grok.com Usage. Skip zero-height slices.
     private func stackedSegments(for day: DailyUsageDay) -> [DailyUsageSegment] {
-        let order = ["before-reset", "voice", "api", "build", "chat", "imagine"]
+        let order = ["before-reset", "chat", "build", "voice", "api", "imagine"]
         return day.segments
             .filter { $0.percentOfWeekly > 0.05 }
             .sorted { a, b in
