@@ -42,10 +42,6 @@ struct DailyUsageChartView: View {
             }
             .frame(height: trackHeight + 34)
 
-            if !week.legendProducts.isEmpty {
-                legend
-            }
-
             if week.isEstimated || !week.hasDailyData {
                 Text("Daily bars only show changes between samples. Week-to-date totals are above.")
                     .font(.system(size: 10))
@@ -67,71 +63,19 @@ struct DailyUsageChartView: View {
                     .fill(Color.primary.opacity(0.12))
                     .frame(width: barWidth, height: trackHeight)
 
-                let segments = stackedSegments(for: day)
-                let dayTotal = max(day.totalPercent, 0.001)
                 let fillHeight = trackHeight * CGFloat(Self.fillFraction(forDayUsage: day.totalPercent))
 
-                VStack(spacing: 0) {
-                    ForEach(segments) { segment in
-                        Rectangle()
-                            .fill(segmentColor(segment))
-                            .frame(
-                                width: barWidth,
-                                height: fillHeight * CGFloat(segment.percentOfWeekly / dayTotal)
-                            )
-                    }
-                }
-                .frame(width: barWidth, height: fillHeight, alignment: .bottom)
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    .fill(day.isToday ? Color.accentColor : Color.accentColor.opacity(0.6))
+                    .frame(width: barWidth, height: fillHeight)
             }
             .frame(width: barWidth, height: trackHeight, alignment: .bottom)
-            .clipped()
 
             Text(day.isAfterReset ? "\(day.weekdaySymbol)*" : day.weekdaySymbol)
                 .font(.system(size: 10))
                 .foregroundStyle(day.isToday ? Color.primary : Color.secondary)
         }
         .frame(maxWidth: .infinity)
-    }
-
-    private var legend: some View {
-        let items = week.legendProducts
-        return VStack(alignment: .leading, spacing: 6) {
-            legendRow(Array(items.prefix(3)))
-            if items.count > 3 {
-                legendRow(Array(items.dropFirst(3)))
-            }
-        }
-    }
-
-    private func legendRow(_ items: [DailyUsageLegendItem]) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            ForEach(items) { item in
-                legendItem(item)
-            }
-            Spacer(minLength: 0)
-        }
-    }
-
-    private func legendItem(_ item: DailyUsageLegendItem) -> some View {
-        HStack(alignment: .center, spacing: 5) {
-            Circle()
-                .fill(legendColor(for: item))
-                .frame(width: 7, height: 7)
-            Text(legendLabel(for: item))
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-    }
-
-    /// Short labels so Chat / Build / API fit without overflowing the panel.
-    private func legendLabel(for item: DailyUsageLegendItem) -> String {
-        switch item.id.lowercased() {
-        case "build": return "Build"
-        case "before-reset": return "Before reset"
-        default: return item.displayName
-        }
     }
 
     private func weekNavButton(
@@ -160,33 +104,6 @@ struct DailyUsageChartView: View {
         DailyUsageBuilder.fillFraction(forDayUsage: percent)
     }
 
-    /// Bottom → top stack order matching grok.com Usage. Skip zero-height slices.
-    private func stackedSegments(for day: DailyUsageDay) -> [DailyUsageSegment] {
-        let order = ["before-reset", "chat", "build", "voice", "api", "imagine"]
-        return day.segments
-            .filter { $0.percentOfWeekly > 0.05 }
-            .sorted { a, b in
-                let aKey = a.isBeforeReset ? "before-reset" : a.productID.lowercased()
-                let bKey = b.isBeforeReset ? "before-reset" : b.productID.lowercased()
-                let ai = order.firstIndex(of: aKey) ?? 99
-                let bi = order.firstIndex(of: bKey) ?? 99
-                return ai < bi
-            }
-    }
-
-    private func segmentColor(_ segment: DailyUsageSegment) -> Color {
-        if segment.isBeforeReset {
-            return Color(red: 0.42, green: 0.56, blue: 0.80)
-        }
-        return Color.product(segment.colorToken)
-    }
-
-    private func legendColor(for item: DailyUsageLegendItem) -> Color {
-        if item.id == "before-reset" {
-            return Color(red: 0.42, green: 0.56, blue: 0.80)
-        }
-        return Color.product(item.colorToken)
-    }
 }
 
 #if DEBUG
