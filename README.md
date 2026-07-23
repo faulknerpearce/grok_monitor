@@ -19,7 +19,7 @@ Grok Monitor sits in the macOS menu bar and shows how much of your SuperGrok wee
 |------|---------|
 | **Menu bar** | Compact status: Grok icon, used %, optional filling pill, optional Chat / Build / API chips |
 | **Dropdown** | Weekly used / remaining, segmented bar, category breakdown, daily bars, reset time |
-| **Daily use** | Billing-week chart (`100/7` daily cap); day-over-day deltas from local history |
+| **Daily use** | Billing-period chart (e.g. Thu→Wed, `100/7` daily cap); whole week flips on reset; day-over-day deltas from local history |
 | **Auth** | WKWebView sign-in; session cookies in Application Support |
 | **Polling** | Faster refresh while the menu is open; backoff on errors; sleep / wake aware |
 | **History** | SwiftData snapshots, charts window, CSV / JSON export |
@@ -149,7 +149,7 @@ For a signed, notarized release build, see [Docs/NOTARIZATION.md](Docs/NOTARIZAT
 
 ## Notes on daily use
 
-Grok’s billing API exposes **cumulative weekly** usage, not a public per-day series. Until local day-to-day history exists, today’s bar shows the tracked weekly total. After the app has polled across multiple days, bars use day-over-day deltas. Each bar is scaled to a daily share of the pool (`100 / 7`).
+Grok’s billing API exposes **cumulative weekly** usage, not a public per-day series. The daily chart is always **exactly seven days** of the active billing period (e.g. Thu→Wed). When the pool resets, the whole window rolls to the next period — never two Thursdays and never a split bar. Until local day-to-day history exists, bars stay empty. After the app has polled across multiple days, bars use day-over-day deltas within the same billing period. Each bar is scaled to a daily share of the pool (`100 / 7`).
 
 ## Contributing
 
