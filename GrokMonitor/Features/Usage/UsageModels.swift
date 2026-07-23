@@ -110,9 +110,16 @@ struct DailyUsageDay: Identifiable, Hashable, Sendable {
     var id: Date { dayStart }
     var dayStart: Date
     var weekdaySymbol: String
+    /// Day-of-month for axis labels (e.g. "16").
+    var dayOfMonth: String
     var segments: [DailyUsageSegment]
     var isToday: Bool
+    /// True when a billing-period rollover or mid-period rebase started on this day.
     var isAfterReset: Bool
+    /// True when `resetsAt` falls on this calendar day (mid-week pool reset marker).
+    var isResetDay: Bool
+    /// Exact reset time when this is the reset day.
+    var resetAt: Date?
 
     var totalPercent: Double {
         segments.reduce(0) { $0 + $1.percentOfWeekly }
@@ -135,7 +142,7 @@ struct DailyUsageSnapshot: Identifiable, Hashable, Codable, Sendable {
     var id: Date { dayStart }
 }
 
-/// Billing-week window for the daily use chart (typically Mon → Sun display order).
+/// Billing-period window for the daily use chart (e.g. Thu→Wed when the pool resets Thursday).
 struct DailyUsageWeek: Hashable, Sendable {
     var weekStart: Date
     var weekEnd: Date
@@ -147,8 +154,10 @@ struct DailyUsageWeek: Hashable, Sendable {
     var hasDailyData: Bool
     /// True when fewer than two in-week samples exist (daily bars not yet day-over-day).
     var isEstimated: Bool
+    /// Short caption for when this period’s pool resets (e.g. "Resets Thu 2:25 PM").
+    var resetCaption: String?
 
-    /// Chronological days for the chart (billing week or Mon→Sun calendar window).
+    /// Chronological days for the chart (billing period start → +6 days).
     var displayDays: [DailyUsageDay] {
         days
     }
