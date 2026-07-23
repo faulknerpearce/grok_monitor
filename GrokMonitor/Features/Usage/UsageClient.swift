@@ -671,7 +671,6 @@ enum GRPCWebParser {
         var nextOrder = order
 
         while index < bytes.count {
-            let fieldStart = index
             guard let key = readVarint(bytes, index: &index), key != 0 else {
                 return (fixed32, varints, nextOrder)
             }
