@@ -78,9 +78,24 @@ struct CoreTestsMain {
 
         let previewWeek = DailyUsageBuilder.preview()
         try assertTrue(previewWeek.days.count == 7, "daily week days")
-        try assertTrue(previewWeek.showsBeforeReset, "daily before reset")
         try assertTrue(previewWeek.hasDailyData, "daily has data")
+        try assertTrue(previewWeek.days.allSatisfy { !$0.isResetDay }, "no split reset bars")
+        try assertTrue(previewWeek.resetCaption != nil, "preview reset caption")
         try assertTrue(abs(DailyUsageBuilder.fillFraction(forDayUsage: 10) - 10.0 / (100.0 / 7.0)) < 0.001, "daily cap math")
+
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        cal.firstWeekday = 2
+        let now = ISO8601DateFormatter().date(from: "2026-07-15T12:00:00Z")!
+        let resetsAt = ISO8601DateFormatter().date(from: "2026-07-16T18:57:00Z")!
+        let bounds = DailyUsageBuilder.billingPeriodWeekBounds(
+            resetsAt: resetsAt,
+            weekOffset: 0,
+            calendar: cal,
+            now: now
+        )
+        try assertTrue(cal.component(.weekday, from: bounds.start) == 5, "period starts Thursday")
+        try assertTrue(cal.component(.weekday, from: bounds.end) == 4, "period ends Wednesday")
 
         print("ALL TESTS PASSED")
     }
