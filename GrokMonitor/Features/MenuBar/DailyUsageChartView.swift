@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Settings → Usage style “Daily use” stacked bar chart.
+/// Settings → Usage style “Daily use” bar chart for the **billing period** week.
 ///
-/// Each day’s track represents that day’s equal share of the weekly pool (`100/7`).
-/// Fill height = dayUsage / dailyCap (capped at a full track).
+/// Each day’s track is an equal share of the weekly pool (`100/7`).
+/// Bars use a uniform fill — no “today” highlight and no mid-period split bars.
 struct DailyUsageChartView: View {
     let week: DailyUsageWeek
     var onPreviousWeek: (() -> Void)?
@@ -40,7 +40,13 @@ struct DailyUsageChartView: View {
                     dayColumn(day)
                 }
             }
-            .frame(height: trackHeight + 34)
+            .frame(height: trackHeight + 48)
+
+            if let resetCaption = week.resetCaption {
+                Text(resetCaption)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
 
             if week.isEstimated || !week.hasDailyData {
                 Text("Daily bars only show changes between samples. Week-to-date totals are above.")
@@ -51,7 +57,7 @@ struct DailyUsageChartView: View {
     }
 
     private func dayColumn(_ day: DailyUsageDay) -> some View {
-        VStack(spacing: 5) {
+        VStack(spacing: 4) {
             Text(day.totalPercent > 0.5 ? "\(Int(day.totalPercent.rounded()))%" : " ")
                 .font(.system(size: 10, weight: .medium))
                 .monospacedDigit()
@@ -66,16 +72,26 @@ struct DailyUsageChartView: View {
                 let fillHeight = trackHeight * CGFloat(Self.fillFraction(forDayUsage: day.totalPercent))
 
                 RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(day.isToday ? Color.accentColor : Color.accentColor.opacity(0.6))
+                    .fill(Color.accentColor.opacity(0.75))
                     .frame(width: barWidth, height: fillHeight)
             }
             .frame(width: barWidth, height: trackHeight, alignment: .bottom)
 
-            Text(day.isAfterReset ? "\(day.weekdaySymbol)*" : day.weekdaySymbol)
-                .font(.system(size: 10))
-                .foregroundStyle(day.isToday ? Color.primary : Color.secondary)
+            VStack(spacing: 1) {
+                Text(day.weekdaySymbol)
+                    .font(.system(size: 10))
+                    .foregroundStyle(Color.secondary)
+                Text(day.dayOfMonth)
+                    .font(.system(size: 9).monospacedDigit())
+                    .foregroundStyle(Color.secondary.opacity(0.85))
+            }
         }
         .frame(maxWidth: .infinity)
+        .help(
+            day.totalPercent > 0.05
+                ? String(format: "%.0f%% of weekly pool", day.totalPercent)
+                : ""
+        )
     }
 
     private func weekNavButton(

@@ -122,7 +122,9 @@ struct MenuBarPanelView: View {
                 canGoNext: weekOffset < 0
             )
 
-            if let resetsAt = snapshot.resetsAt {
+            // Full reset datetime only when the chart week does not already caption it
+            // (e.g. browsing another calendar week, or resetsAt outside Mon–Sun).
+            if let resetsAt = snapshot.resetsAt, week.resetCaption == nil {
                 Text("Resets \(resetsAt.formatted(.dateTime.month(.abbreviated).day().year().hour().minute()))")
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
